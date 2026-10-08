@@ -16,14 +16,13 @@
     globalEnabled: true,
     mode: 'ultra',
     customSettings: {
-      killAnimations: true,
-      killTransitions: true,
-      killBlurFilters: true,
-      killScrollHijack: true,
-      pauseBackgroundMedia: true,
+      killAnimations: false,
+      killTransitions: false,
+      killBlurFilters: false,
+      killScrollHijack: false,
+      pauseBackgroundMedia: false,
       throttleCanvasFps: false,
-      fpsLimit: 30,
-      forceReducedMotion: true
+      fpsLimit: 30
     },
     siteOverrides: {}
   };
@@ -42,8 +41,7 @@
   let storageChangeCount = 0;
 
   function isReanimeHost() {
-    const hostname = window.location.hostname.toLowerCase();
-    return hostname === REANIME_HOST || hostname.endsWith(`.${REANIME_HOST}`);
+    return window.location.hostname.toLowerCase() === REANIME_HOST;
   }
 
   function isReanimeHomePage() {
@@ -64,15 +62,14 @@
       return {
         enabled: true,
         mode: 'ultra',
-        killAnimations: true,
-        killTransitions: true,
+        killAnimations: false,
+        killTransitions: false,
         killBlurFilters: true,
-        killScrollHijack: true,
+        killScrollHijack: false,
         pauseBackgroundMedia: true,
         // Maximum keeps page animation frames uncapped to preserve responsiveness.
         throttleCanvasFps: false,
-        fpsLimit: 30,
-        forceReducedMotion: true
+        fpsLimit: 30
       };
     }
 
@@ -80,14 +77,13 @@
       return {
         enabled: true,
         mode: 'balanced',
-        killAnimations: true,
+        killAnimations: false,
         killTransitions: false,
-        killBlurFilters: true,
-        killScrollHijack: true,
-        pauseBackgroundMedia: true,
+        killBlurFilters: false,
+        killScrollHijack: false,
+        pauseBackgroundMedia: false,
         throttleCanvasFps: false,
-        fpsLimit: 60,
-        forceReducedMotion: true
+        fpsLimit: 60
       };
     }
 
@@ -101,8 +97,7 @@
       killScrollHijack: !!custom.killScrollHijack,
       pauseBackgroundMedia: !!custom.pauseBackgroundMedia,
       throttleCanvasFps: !!custom.throttleCanvasFps,
-      fpsLimit: custom.fpsLimit || 30,
-      forceReducedMotion: !!custom.forceReducedMotion
+      fpsLimit: custom.fpsLimit || 30
     };
   }
 
@@ -116,7 +111,6 @@
       css += `
         html, body {
           scroll-behavior: auto !important;
-          overscroll-behavior: auto !important;
         }
       `;
     }
@@ -147,22 +141,6 @@
         *, *::before, *::after {
           backdrop-filter: none !important;
           -webkit-backdrop-filter: none !important;
-          box-shadow: none !important;
-          text-shadow: none !important;
-        }
-      `;
-    }
-
-    if (settings.forceReducedMotion) {
-      css += `
-        @media (prefers-reduced-motion: no-preference) {
-          *, *::before, *::after {
-            animation-duration: 0.0001s !important;
-            animation-iteration-count: 1 !important;
-            animation-play-state: running !important;
-            animation-fill-mode: both !important;
-            scroll-behavior: auto !important;
-          }
         }
       `;
     }
@@ -202,7 +180,6 @@
     window.dispatchEvent(new CustomEvent('__SMOOTHBOOST_UPDATE_PAGE_HOOK__', {
       detail: {
         enabled: settings.enabled,
-        killScrollHijack: settings.killScrollHijack,
         pauseBackgroundMedia: settings.pauseBackgroundMedia,
         pauseReanimeCarousel: settings.enabled && isReanimeHomePage(),
         throttleCanvasFps: settings.throttleCanvasFps,

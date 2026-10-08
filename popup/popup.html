@@ -27,6 +27,13 @@
       </label>
     </header>
 
+    <nav class="tab-list" role="tablist" aria-label="SmoothBoost sections">
+      <button class="tab-button is-selected" id="tab-controls" type="button" role="tab" aria-selected="true" aria-controls="controls-panel" tabindex="0">Controls</button>
+      <button class="tab-button" id="tab-help" type="button" role="tab" aria-selected="false" aria-controls="help-panel" tabindex="-1">Help &amp; Bugs</button>
+    </nav>
+
+    <main>
+    <section class="tab-panel" id="controls-panel" role="tabpanel" aria-labelledby="tab-controls">
     <!-- Preset Selector -->
     <section class="section preset-section">
       <div class="section-label">SPEED PROFILE</div>
@@ -74,8 +81,8 @@
 
       <div class="toggle-row">
         <div class="toggle-info">
-          <span class="toggle-name">Kill CSS Animations</span>
-          <span class="toggle-sub">Stops spinning loaders, keyframes & infinite loops</span>
+          <span class="toggle-name">Disable CSS animations</span>
+          <span class="toggle-sub">Custom only: can hide content or interfere with site controls</span>
         </div>
         <label class="switch-sm">
           <input type="checkbox" id="toggle-animations">
@@ -85,8 +92,8 @@
 
       <div class="toggle-row">
         <div class="toggle-info">
-          <span class="toggle-name">Kill CSS Transitions</span>
-          <span class="toggle-sub">Removes hover animations causing layout reflows</span>
+          <span class="toggle-name">Disable CSS transitions</span>
+          <span class="toggle-sub">Custom only: may affect responsive site controls</span>
         </div>
         <label class="switch-sm">
           <input type="checkbox" id="toggle-transitions">
@@ -96,8 +103,8 @@
 
       <div class="toggle-row">
         <div class="toggle-info">
-          <span class="toggle-name">Strip Backdrop Blur & Filters</span>
-          <span class="toggle-sub">Cures M1 GPU lag from heavy blur & box-shadows</span>
+          <span class="toggle-name">Reduce backdrop blur</span>
+          <span class="toggle-sub">Removes backdrop blur while keeping shadows and other filters</span>
         </div>
         <label class="switch-sm">
           <input type="checkbox" id="toggle-blur">
@@ -107,8 +114,8 @@
 
       <div class="toggle-row">
         <div class="toggle-info">
-          <span class="toggle-name">Restore Native Mac Scroll</span>
-          <span class="toggle-sub">Kills Lenis & wheel hijackers for 120Hz trackpad feel</span>
+          <span class="toggle-name">Disable CSS smooth scrolling</span>
+          <span class="toggle-sub">Leaves site wheel handlers and native scroll behavior alone</span>
         </div>
         <label class="switch-sm">
           <input type="checkbox" id="toggle-scroll">
@@ -139,18 +146,33 @@
       </div>
     </section>
 
-    <section class="help-section">
+    </section>
+
+    <section class="tab-panel help-panel" id="help-panel" role="tabpanel" aria-labelledby="tab-help" hidden>
+      <div class="section-label">HELP &amp; FEEDBACK</div>
+      <p class="help-intro">Found a problem? Open a GitHub issue. Include your browser, site, selected profile, what happened, and steps to reproduce it.</p>
+      <a class="action-link primary-action" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues/new" target="_blank" rel="noopener noreferrer">Report a bug on GitHub</a>
+      <a class="action-link secondary-action" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues" target="_blank" rel="noopener noreferrer">View GitHub issues</a>
+
+      <div class="credit-card">
+        <span class="credit-label">ORIGINAL PROJECT</span>
+        <span>Created by <a href="https://github.com/BiniFn" target="_blank" rel="noopener noreferrer">BiniFn</a>. SmoothBoost continues that project with Chrome and Helium packaging and maintenance.</span>
+      </div>
+
+      <p class="migration-note">Updating from an older version resets the old Custom feature defaults once. You can turn individual options back on in Custom.</p>
+
       <details class="help-card">
         <summary>Install and use instructions</summary>
         <ol class="help-steps">
-          <li><a href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0/SmoothBoost-1.0.5.zip" target="_blank" rel="noreferrer">Download the SmoothBoost 1.0.5 ZIP</a> and extract it.</li>
+          <li><a href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0.6/SmoothBoost-1.0.6.zip" target="_blank" rel="noopener noreferrer">Download the SmoothBoost 1.0.6 ZIP</a> and extract it.</li>
           <li>Open <code>chrome://extensions</code> in Chrome or Helium and turn on <strong>Developer mode</strong>.</li>
           <li>Choose <strong>Load unpacked</strong> and select the extracted folder containing <code>manifest.json</code>.</li>
           <li>Reload open tabs after installing or updating so the page scripts can start.</li>
-          <li>Use the profile buttons above, or switch to <strong>Custom</strong> to adjust individual controls. The top switch turns SmoothBoost off for this site.</li>
+          <li>Use the <strong>Controls</strong> tab to choose a profile or switch to <strong>Custom</strong> to adjust individual controls. The top switch turns SmoothBoost off for this site.</li>
         </ol>
       </details>
     </section>
+    </main>
 
     <!-- Bottom Shortcut & Actions -->
     <footer class="footer">

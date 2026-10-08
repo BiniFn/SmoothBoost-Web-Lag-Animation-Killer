@@ -6,7 +6,6 @@
 
   let config = {
     enabled: false,
-    killScrollHijack: false,
     pauseBackgroundMedia: false,
     pauseReanimeCarousel: false,
     throttleCanvasFps: false,
@@ -16,7 +15,7 @@
   const REANIME_HERO_SELECTOR = '[aria-label="Hero carousel"]';
   const hostname = window.location?.hostname?.toLowerCase() || '';
   const isReanimeTopFrame = window === window.top &&
-    (hostname === 'reanime.to' || hostname.endsWith('.reanime.to'));
+    hostname === 'reanime.to';
   const nativeSetInterval = window.setInterval;
   const nativeClearInterval = window.clearInterval;
   const nativeSetTimeout = window.setTimeout;
@@ -25,12 +24,6 @@
   let lastCarouselInteractionAt = 0;
   let reanimeCarouselPaused = false;
 
-  const scrollHooks = {
-    addOriginal: null,
-    addWrapper: null,
-    preventOriginal: null,
-    preventWrapper: null
-  };
   const frameHooks = {
     requestOriginal: null,
     requestWrapper: null,
@@ -159,56 +152,6 @@
 
   installReanimeCarouselTimerGuard();
 
-  function isTopLevelTarget(target) {
-    return target === window || target === document || target === document.documentElement || target === document.body;
-  }
-
-  function restoreScrollHooks() {
-    if (scrollHooks.addWrapper && EventTarget.prototype.addEventListener === scrollHooks.addWrapper) {
-      EventTarget.prototype.addEventListener = scrollHooks.addOriginal;
-    }
-    if (scrollHooks.preventWrapper && Event.prototype.preventDefault === scrollHooks.preventWrapper) {
-      Event.prototype.preventDefault = scrollHooks.preventOriginal;
-    }
-    scrollHooks.addOriginal = null;
-    scrollHooks.addWrapper = null;
-    scrollHooks.preventOriginal = null;
-    scrollHooks.preventWrapper = null;
-  }
-
-  function syncScrollHooks() {
-    if (!config.enabled || !config.killScrollHijack) {
-      restoreScrollHooks();
-      return;
-    }
-    if (!scrollHooks.addWrapper) {
-      scrollHooks.addOriginal = EventTarget.prototype.addEventListener;
-      scrollHooks.addWrapper = function (type, listener, options) {
-        if (config.enabled && config.killScrollHijack && (type === 'wheel' || type === 'mousewheel') && isTopLevelTarget(this)) {
-          if (typeof options === 'boolean') {
-            options = { passive: true, capture: options };
-          } else if (typeof options === 'object' && options !== null) {
-            options = { ...options, passive: true };
-          } else {
-            options = { passive: true };
-          }
-        }
-        return scrollHooks.addOriginal.call(this, type, listener, options);
-      };
-      EventTarget.prototype.addEventListener = scrollHooks.addWrapper;
-    }
-    if (!scrollHooks.preventWrapper) {
-      scrollHooks.preventOriginal = Event.prototype.preventDefault;
-      scrollHooks.preventWrapper = function () {
-        if (config.enabled && config.killScrollHijack && (this.type === 'wheel' || this.type === 'mousewheel') && isTopLevelTarget(this.currentTarget || this.target)) {
-          return;
-        }
-        return scrollHooks.preventOriginal.apply(this, arguments);
-      };
-      Event.prototype.preventDefault = scrollHooks.preventWrapper;
-    }
-  }
-
   function restoreFrameHooks() {
     // Keep wrappers until throttled callbacks drain so their public IDs remain
     // cancellable and callbacks already waiting for a frame are not dropped.
@@ -290,7 +233,6 @@
   }
 
   function syncHooks() {
-    syncScrollHooks();
     syncFrameHooks();
   }
 

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "SmoothBoost: Web Lag & Animation Killer",
   "short_name": "SmoothBoost",
-  "version": "1.0.5",
-  "description": "Reduce decorative page motion, visual effects, scroll hijacking, and autoplaying background media, with an optional animation frame limit.",
+  "version": "1.0.6",
+  "description": "Reduce background media and expensive backdrop blur without changing site scrolling or disabling page animations.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

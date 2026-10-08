@@ -1,17 +1,17 @@
 // SmoothBoost - Popup Controller Script
 
 const DEFAULT_SETTINGS = {
+  settingsVersion: 2,
   globalEnabled: true,
   mode: "ultra",
   customSettings: {
-    killAnimations: true,
-    killTransitions: true,
-    killBlurFilters: true,
-    killScrollHijack: true,
-    pauseBackgroundMedia: true,
+    killAnimations: false,
+    killTransitions: false,
+    killBlurFilters: false,
+    killScrollHijack: false,
+    pauseBackgroundMedia: false,
     throttleCanvasFps: false,
-    fpsLimit: 30,
-    forceReducedMotion: true
+    fpsLimit: 30
   },
   siteOverrides: {}
 };
@@ -27,6 +27,10 @@ const btnUltra = document.getElementById("btn-ultra");
 const btnBalanced = document.getElementById("btn-balanced");
 const btnCustom = document.getElementById("btn-custom");
 const resetBtn = document.getElementById("reset-defaults");
+const controlsTab = document.getElementById("tab-controls");
+const helpTab = document.getElementById("tab-help");
+const controlsPanel = document.getElementById("controls-panel");
+const helpPanel = document.getElementById("help-panel");
 
 const statusDot = document.getElementById("status-dot");
 const statusPage = document.getElementById("status-page");
@@ -45,19 +49,19 @@ const toggleFps = document.getElementById("toggle-fps");
 // Presets mapping
 const PRESET_CONFIGS = {
   ultra: {
-    killAnimations: true,
-    killTransitions: true,
+    killAnimations: false,
+    killTransitions: false,
     killBlurFilters: true,
-    killScrollHijack: true,
+    killScrollHijack: false,
     pauseBackgroundMedia: true,
     throttleCanvasFps: false
   },
   balanced: {
-    killAnimations: true,
+    killAnimations: false,
     killTransitions: false,
-    killBlurFilters: true,
-    killScrollHijack: true,
-    pauseBackgroundMedia: true,
+    killBlurFilters: false,
+    killScrollHijack: false,
+    pauseBackgroundMedia: false,
     throttleCanvasFps: false
   }
 };
@@ -82,7 +86,15 @@ async function init() {
 
   // 2. Load stored config
   const stored = await chrome.storage.local.get("smoothBoostConfig");
-  config = stored.smoothBoostConfig || JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+  config = {
+    ...DEFAULT_SETTINGS,
+    ...(stored.smoothBoostConfig || {}),
+    customSettings: {
+      ...DEFAULT_SETTINGS.customSettings,
+      ...(stored.smoothBoostConfig?.customSettings || {})
+    },
+    siteOverrides: stored.smoothBoostConfig?.siteOverrides || {}
+  };
 
   // 3. Render UI based on config
   renderUI();
@@ -182,6 +194,9 @@ function setMode(newMode) {
 }
 
 function bindEvents() {
+  controlsTab.addEventListener("click", () => selectTab("controls"));
+  helpTab.addEventListener("click", () => selectTab("help"));
+
   // Master site toggle
   siteToggle.addEventListener("change", () => {
     const isChecked = siteToggle.checked;
@@ -226,6 +241,18 @@ function bindEvents() {
     renderUI();
     await saveAndBroadcast();
   });
+}
+
+function selectTab(tabName) {
+  const showControls = tabName === "controls";
+  controlsTab.classList.toggle("is-selected", showControls);
+  helpTab.classList.toggle("is-selected", !showControls);
+  controlsTab.setAttribute("aria-selected", String(showControls));
+  helpTab.setAttribute("aria-selected", String(!showControls));
+  controlsTab.tabIndex = showControls ? 0 : -1;
+  helpTab.tabIndex = showControls ? -1 : 0;
+  controlsPanel.hidden = !showControls;
+  helpPanel.hidden = showControls;
 }
 
 function sendTabMessage(tabId, message, callback = () => {}) {

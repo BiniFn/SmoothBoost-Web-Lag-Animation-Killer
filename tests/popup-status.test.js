@@ -14,14 +14,26 @@ class FakeElement {
     this.hidden = false;
     this.listeners = new Map();
     this.classes = new Set();
+    this.attributes = new Map();
+    this.tabIndex = 0;
     this.classList = {
       add: (name) => this.classes.add(name),
-      remove: (name) => this.classes.delete(name)
+      remove: (name) => this.classes.delete(name),
+      toggle: (name, force) => {
+        const shouldAdd = force === undefined ? !this.classes.has(name) : force;
+        if (shouldAdd) this.classes.add(name);
+        else this.classes.delete(name);
+        return shouldAdd;
+      }
     };
   }
 
   addEventListener(type, listener) {
     this.listeners.set(type, listener);
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, value);
   }
 }
 
@@ -109,4 +121,18 @@ test('popup reports browser-owned pages as unsupported without messaging them', 
   assert.equal(messageCount, 0);
   assert.equal(elements.get('status-page').textContent, 'Unsupported page');
   assert.match(elements.get('status-detail').textContent, /does not allow extensions/);
+});
+
+test('popup switches between Controls and Help & Bugs tabs', async () => {
+  const { elements } = await renderPopup({ url: 'https://example.com/', response: { status: 'active', enabled: true, mode: 'ultra' } });
+  elements.get('tab-help').listeners.get('click')();
+
+  assert.equal(elements.get('help-panel').hidden, false);
+  assert.equal(elements.get('controls-panel').hidden, true);
+  assert.equal(elements.get('tab-help').attributes.get('aria-selected'), 'true');
+  assert.equal(elements.get('tab-controls').tabIndex, -1);
+
+  elements.get('tab-controls').listeners.get('click')();
+  assert.equal(elements.get('help-panel').hidden, true);
+  assert.equal(elements.get('controls-panel').hidden, false);
 });

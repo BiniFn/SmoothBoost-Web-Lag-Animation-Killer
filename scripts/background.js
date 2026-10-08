@@ -1,17 +1,17 @@
 // SmoothBoost - Background Service Worker (Manifest V3)
 
 const DEFAULT_SETTINGS = {
+  settingsVersion: 2,
   globalEnabled: true,
   mode: "ultra", // "ultra" | "balanced" | "custom"
   customSettings: {
-    killAnimations: true,
-    killTransitions: true,
-    killBlurFilters: true,
-    killScrollHijack: true,
-    pauseBackgroundMedia: true,
+    killAnimations: false,
+    killTransitions: false,
+    killBlurFilters: false,
+    killScrollHijack: false,
+    pauseBackgroundMedia: false,
     throttleCanvasFps: false,
-    fpsLimit: 30,
-    forceReducedMotion: true
+    fpsLimit: 30
   },
   siteOverrides: {} // hostname -> { enabled: boolean, mode?: string }
 };
@@ -42,11 +42,33 @@ function sendTabMessage(tabId, message) {
 }
 
 // Initialize settings on installation
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async ({ reason } = {}) => {
   const existing = await chrome.storage.local.get("smoothBoostConfig");
   if (!existing || !existing.smoothBoostConfig) {
     await chrome.storage.local.set({ smoothBoostConfig: DEFAULT_SETTINGS });
+    return;
   }
+
+  const config = existing.smoothBoostConfig;
+  if (reason !== "update" || (config.settingsVersion || 0) >= DEFAULT_SETTINGS.settingsVersion) return;
+
+  await chrome.storage.local.set({
+    smoothBoostConfig: {
+      ...config,
+      settingsVersion: DEFAULT_SETTINGS.settingsVersion,
+      customSettings: {
+        ...DEFAULT_SETTINGS.customSettings,
+        ...(config.customSettings || {}),
+        // These were enabled by default before 1.0.6 and could break page UI,
+        // normal scrolling, or autoplaying content. Users can opt back in.
+        killAnimations: false,
+        killTransitions: false,
+        killBlurFilters: false,
+        killScrollHijack: false,
+        pauseBackgroundMedia: false
+      }
+    }
+  });
 });
 
 // Update badge for active tab

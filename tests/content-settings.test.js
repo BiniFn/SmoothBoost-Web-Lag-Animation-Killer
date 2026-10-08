@@ -109,9 +109,8 @@ test('only the top frame applies page changes and only pauses ambient autoplay p
   assert.equal(player.paused, false, 'a non-looping player remains playable');
   assert.equal(embeddedPreview.paused, false, 'embedded video frames are left alone');
   const appliedCss = topFrame.styles.get('smoothboost-injected-styles').textContent;
-  assert.doesNotMatch(appliedCss, /\n\s*filter:\s*none/);
-  assert.match(appliedCss, /animation-play-state:\s*running/);
-  assert.doesNotMatch(appliedCss, /animation-play-state:\s*paused|transition-property:\s*none/);
+  assert.match(appliedCss, /backdrop-filter:\s*none/);
+  assert.doesNotMatch(appliedCss, /animation-duration:|transition-duration:|box-shadow:\s*none|text-shadow:\s*none/);
 
   const updatedConfig = {
     globalEnabled: false,
@@ -131,4 +130,19 @@ test('only the top frame applies page changes and only pauses ambient autoplay p
   topFrame.setConfig({ globalEnabled: false, mode: 'ultra', siteOverrides: {} });
   assert.equal(preview.paused, false, 'turning SmoothBoost off resumes its paused preview');
   assert.equal(preview.attributes.has('data-smoothboost-paused'), false);
+});
+
+test('Balanced preserves site styles and background media', async () => {
+  const preview = {
+    autoplay: true, loop: true, muted: true, controls: false, paused: false,
+    pause() { this.paused = true; },
+    setAttribute() {}, removeAttribute() {}, play() { this.paused = false; return Promise.resolve(); }
+  };
+  const frame = await createFrame('crunchyroll.com', { videos: [preview] });
+  frame.setConfig({ globalEnabled: true, mode: 'balanced', siteOverrides: {} });
+
+  const css = frame.styles.get('smoothboost-injected-styles').textContent;
+  assert.doesNotMatch(css, /animation-duration:|transition-duration:|backdrop-filter:/);
+  assert.equal(preview.paused, false);
+  assert.equal(frame.dispatchedEvents.at(-1).detail.killScrollHijack, undefined);
 });

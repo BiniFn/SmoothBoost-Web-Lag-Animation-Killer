@@ -173,8 +173,8 @@ test('inactive page hook leaves APIs unchanged and restores wrappers when disabl
     pauseBackgroundMedia: true,
     throttleCanvasFps: false
   });
-  assert.notEqual(harness.prototypes.eventTarget.addEventListener, harness.originals.addEventListener);
-  assert.notEqual(harness.prototypes.event.preventDefault, harness.originals.preventDefault);
+  assert.equal(harness.prototypes.eventTarget.addEventListener, harness.originals.addEventListener, 'wheel listeners remain under page control');
+  assert.equal(harness.prototypes.event.preventDefault, harness.originals.preventDefault, 'wheel cancellation remains under page control');
   assert.equal(harness.prototypes.media.play, harness.originals.play, 'the page hook never blocks media playback');
   assert.equal(harness.window.requestAnimationFrame, harness.originals.requestAnimationFrame);
 
