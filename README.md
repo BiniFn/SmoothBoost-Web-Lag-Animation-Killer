@@ -10,7 +10,7 @@ The original SmoothBoost / Web Lag & Animation Killer project is by [BiniFn](htt
 
 ### Install from the ZIP
 
-1. Download `dist/SmoothBoost-1.0.5.zip` and extract it.
+1. Download `SmoothBoost-1.0.5.zip` from the [Version 1.0 release](https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/tag/v1.0) and extract it.
 2. Open `chrome://extensions` in Chrome or Helium.
 3. Turn on **Developer mode** and choose **Load unpacked**.
 4. Select the extracted folder containing `manifest.json`.
@@ -18,6 +18,8 @@ The original SmoothBoost / Web Lag & Animation Killer project is by [BiniFn](htt
 6. Reload already-open tabs after loading or updating SmoothBoost so its document-start scripts can run.
 
 For local development, **Load unpacked** can also point directly to this project folder.
+
+The same install and usage steps are available from the extension popup under **Install and use instructions**.
 
 The extension runs on all sites by default. Use its toolbar popup to turn it off for a site or choose Maximum, Balanced, or Custom settings. Maximum leaves JavaScript animation frames uncapped and reduces decorative motion and visual effects; CSS animations finish almost instantly instead of freezing content in its hidden first frame. A 30 FPS limit is available as an optional Custom setting. Media handling is limited to muted, looping autoplay previews in the top-level page; embedded video players and their playback controls are left alone, and previews paused by SmoothBoost resume when it is turned off. On Re:Anime’s home page, SmoothBoost detects and stops the hero’s autoplay interval, restores the slide that was showing, and keeps the manual slide controls available. The popup reports whether that pause was confirmed. The shortcut is **Option/Alt + Shift + S**; browser shortcut settings can change or reassign it.
 

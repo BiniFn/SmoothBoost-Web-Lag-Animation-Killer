@@ -423,3 +423,45 @@ body.site-disabled .toggles-section {
   pointer-events: none;
   filter: grayscale(0.6);
 }
+
+/* Quick install and usage guide */
+.help-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  padding: 10px 12px;
+}
+
+.help-card summary {
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.help-card[open] summary {
+  margin-bottom: 8px;
+}
+
+.help-steps {
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.help-steps li + li {
+  margin-top: 5px;
+}
+
+.help-steps a {
+  color: var(--accent-light);
+}
+
+.help-steps code {
+  color: var(--text-main);
+  background: var(--bg-card);
+  border-radius: 3px;
+  padding: 1px 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
