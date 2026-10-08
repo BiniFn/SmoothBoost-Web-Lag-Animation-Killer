@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmoothBoost</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Top Bar -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div>
+          <h1 class="title">SmoothBoost</h1>
+          <p class="subtitle" id="domain-label">Scanning site...</p>
+        </div>
+      </div>
+      <label class="switch" title="Toggle SmoothBoost for this site">
+        <input type="checkbox" id="site-toggle" checked>
+        <span class="slider"></span>
+      </label>
+    </header>
+
+    <!-- Preset Selector -->
+    <section class="section preset-section">
+      <div class="section-label">SPEED PROFILE</div>
+      <div class="preset-group">
+        <button class="preset-btn" data-mode="ultra" id="btn-ultra">
+          <span class="preset-icon">🚀</span>
+          <span class="preset-title">Maximum</span>
+          <span class="preset-desc">Responsive</span>
+        </button>
+        <button class="preset-btn" data-mode="balanced" id="btn-balanced">
+          <span class="preset-icon">⚖️</span>
+          <span class="preset-title">Balanced</span>
+          <span class="preset-desc">Smooth UI</span>
+        </button>
+        <button class="preset-btn" data-mode="custom" id="btn-custom">
+          <span class="preset-icon">⚙️</span>
+          <span class="preset-title">Custom</span>
+          <span class="preset-desc">Tweak</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Applied state, queried from the active tab's top frame. -->
+    <section class="status-card" aria-live="polite">
+      <div class="status-heading">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-value" id="status-page">Checking…</span>
+      </div>
+      <p class="status-detail" id="status-detail">Checking whether SmoothBoost is running in this tab.</p>
+      <div class="status-meta">
+        <div class="status-meta-item">
+          <span class="status-meta-label">PROFILE</span>
+          <span class="status-meta-value" id="status-profile">—</span>
+        </div>
+        <div class="status-meta-item" id="site-rule-row" hidden>
+          <span class="status-meta-label">RE:ANIME HERO</span>
+          <span class="status-meta-value" id="status-site-rule">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Granular Features / Custom Controls -->
+    <section class="section toggles-section" id="toggles-wrapper">
+      <div class="section-label">LAG KILLER CONTROLS</div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Kill CSS Animations</span>
+          <span class="toggle-sub">Stops spinning loaders, keyframes & infinite loops</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-animations">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Kill CSS Transitions</span>
+          <span class="toggle-sub">Removes hover animations causing layout reflows</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-transitions">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Strip Backdrop Blur & Filters</span>
+          <span class="toggle-sub">Cures M1 GPU lag from heavy blur & box-shadows</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-blur">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Restore Native Mac Scroll</span>
+          <span class="toggle-sub">Kills Lenis & wheel hijackers for 120Hz trackpad feel</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-scroll">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Pause Autoplay Background Media</span>
+          <span class="toggle-sub">Pauses muted looping previews; video players stay untouched</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-media">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Limit page animation to 30 FPS</span>
+          <span class="toggle-sub">Optional: lower CPU/GPU use; may feel choppy</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-fps">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Bottom Shortcut & Actions -->
+    <footer class="footer">
+      <div class="shortcut-tip">
+        <span>Shortcut:</span> <kbd>⌥ Option</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>
+      </div>
+      <button class="reset-link" id="reset-defaults">Reset</button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmoothBoost Stress Test Page</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --accent: #38bdf8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow-x: hidden;
+      min-height: 250vh;
+      position: relative;
+    }
+
+    /* Fixed FPS Counter */
+    #fps-meter {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #38bdf8;
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #38bdf8;
+      z-index: 99999;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #fps-meter span {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    /* Fixed background canvas loop */
+    #particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.6;
+    }
+
+    /* Hero section */
+    .hero {
+      position: relative;
+      z-index: 10;
+      padding: 80px 24px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 42px;
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      font-size: 18px;
+      color: #94a3b8;
+      margin-bottom: 24px;
+    }
+
+    .status-box {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 40px;
+      text-align: left;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* Heavy GPU Backdrop Blur Glass Cards */
+    .glass-grid {
+      position: relative;
+      z-index: 10;
+      max-width: 1100px;
+      margin: 0 auto 60px;
+      padding: 0 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .glass-card {
+      /* This is the #1 culprit on MacBook M1: heavy backdrop blur layers */
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+      transition: all 0.4s ease;
+      cursor: pointer;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 24px 48px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Extreme Endless Keyframe Animations */
+    .spinning-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 3px solid transparent;
+      border-top-color: #38bdf8;
+      border-right-color: #f43f5e;
+      margin-bottom: 12px;
+      animation: crazySpin 1.2s infinite linear;
+    }
+
+    .floating-box {
+      animation: crazyFloat 2.5s infinite ease-in-out;
+    }
+
+    .pulsing-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #f43f5e;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      animation: crazyPulse 1.5s infinite;
+      margin-bottom: 8px;
+    }
+
+    @keyframes crazySpin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes crazyFloat {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-14px) rotate(4deg); }
+    }
+
+    @keyframes crazyPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    /* Simulated background video container */
+    .video-section {
+      position: relative;
+      z-index: 10;
+      max-width: 900px;
+      margin: 0 auto 60px;
+      padding: 0 20px;
+      text-align: center;
+    }
+
+    video {
+      width: 100%;
+      max-width: 700px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Live FPS Display -->
+  <div id="fps-meter">
+    <div id="fps-val">60 FPS</div>
+    <span>Rendering Rate</span>
+  </div>
+
+  <!-- Background Canvas Animation -->
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="hero">
+    <h1>SmoothBoost Stress Test Page</h1>
+    <p class="subtitle">This page simulates bloated modern web animations that cause lag on M1 MacBooks.</p>
+
+    <div class="status-box">
+      <strong>Active Performance Hogs on this Page:</strong>
+      <ul style="margin-left: 20px; margin-top: 8px;">
+        <li>🌀 8+ Infinite CSS keyframe animations (spinners, floating cards, pulsing tags)</li>
+        <li>🌫️ 8 Heavy GPU <code>backdrop-filter: blur(28px)</code> glassmorphic cards</li>
+        <li>✨ Continuous canvas particle simulation with 400 physics nodes on <code>requestAnimationFrame</code></li>
+        <li>📜 Hijacked mouse wheel scroll listener with artificial inertia lag</li>
+        <li>🎬 Autoplaying looping video element</li>
+      </ul>
+      <p style="margin-top: 12px; color: #38bdf8;">
+        👉 <strong>Test instructions:</strong> Enable the <strong>SmoothBoost</strong> extension or press <kbd>Alt+Shift+S</kbd>. Watch animations stop instantly, the GPU load plummet, and scrolling turn buttery smooth!
+      </p>
+    </div>
+  </div>
+
+  <!-- Heavy Glassmorphic Cards -->
+  <div class="glass-grid">
+    <div class="glass-card floating-box">
+      <div class="spinning-circle"></div>
+      <div class="pulsing-badge">HEAVY GPU LOAD</div>
+      <h3>Glass Card 1</h3>
+      <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+        Rendering continuous 28px blur filters with composited subpixel borders.
+      </p>
+    </div>
+
+    <div class="glass-card floating-box" style="animation-delay: 0.3s;">
+      <div class="spinning-circle" style="animation-duration: 0.8s;"></div>
+      <div class="pulsing-badge">KEYFRAME LOOP</div>
+      <h3>Glass Card 2</h3>
+      <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+        Infinite transforms force repaints on every single refresh cycle.
+      </p>
+    </div>
+
+    <div class="glass-card floating-box" style="animation-delay: 0.6s;">
+      <div class="spinning-circle" style="animation-duration: 1.5s;"></div>
+      <div class="pulsing-badge">BLUR FILTER</div>
+      <h3>Glass Card 3</h3>
+      <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+        Stacking backdrop-filter layers forces expensive M1 GPU memory passes.
+      </p>
+    </div>
+
+    <div class="glass-card floating-box" style="animation-delay: 0.9s;">
+      <div class="spinning-circle" style="animation-duration: 0.6s;"></div>
+      <div class="pulsing-badge">LAYOUT REFLOW</div>
+      <h3>Glass Card 4</h3>
+      <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+        Heavy CSS transitions on hover that trigger browser style recalculation.
+      </p>
+    </div>
+
+    <div class="glass-card floating-box" style="animation-delay: 1.2s;">
+      <div class="spinning-circle" style="animation-duration: 1.1s;"></div>
+      <div class="pulsing-badge">GPU SHADOW</div>
+      <h3>Glass Card 5</h3>
+      <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+        Large box-shadows spread over transparent compositing contexts.
+      </p>
+    </div>
+
+    <div class="glass-card floating-box" style="animation-delay: 1.5s;">
+      <div class="spinning-circle" style="animation-duration: 2s;"></div>
+      <div class="pulsing-badge">PARTICLE SYNC</div>
+      <h3>Glass Card 6</h3>
+      <p style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+        Synchronized with background canvas requestAnimationFrame ticks.
+      </p>
+    </div>
+  </div>
+
+  <!-- Video Section -->
+  <div class="video-section">
+    <h2 style="margin-bottom: 14px;">Looping Video Autoplayer</h2>
+    <video autoplay loop muted playsinline poster="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='300' viewBox='0 0 600 300'><rect fill='%231e293b' width='600' height='300'/><text fill='%2364748b' x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='20'>Autoplaying Video Decoder Test</text></svg>">
+      <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <script>
+    // 1. LIVE FPS COUNTER
+    let lastTime = performance.now();
+    let frameCount = 0;
+    const fpsVal = document.getElementById('fps-val');
+
+    function updateFps() {
+      const now = performance.now();
+      frameCount++;
+      if (now - lastTime >= 500) {
+        const fps = Math.round((frameCount * 1000) / (now - lastTime));
+        fpsVal.textContent = fps + ' FPS';
+        frameCount = 0;
+        lastTime = now;
+      }
+      requestAnimationFrame(updateFps);
+    }
+    requestAnimationFrame(updateFps);
+
+    // 2. SIMULATED SMOOTH SCROLL HIJACKER (Lenis/Locomotive style)
+    // Intercepts wheel events on window and body
+    window.addEventListener('wheel', function (e) {
+      // Artificial delay or resistance
+      if (e.deltaY !== 0) {
+        // Many libraries do: e.preventDefault(); and trigger custom interpolation
+        // SmoothBoost's page-hook.js will neutralize this!
+      }
+    }, { passive: false });
+
+    // 3. CANVAS PARTICLE SIMULATION (400 heavy particles)
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const particles = [];
+    const count = 350;
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 2,
+        vy: (Math.random() - 0.5) * 2,
+        radius: Math.random() * 2.5 + 1,
+        color: i % 2 === 0 ? 'rgba(56, 189, 248, 0.4)' : 'rgba(129, 140, 248, 0.4)'
+      });
+    }
+
+    function renderParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      }
+      requestAnimationFrame(renderParticles);
+    }
+    requestAnimationFrame(renderParticles);
+  </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "SmoothBoost: Web Lag & Animation Killer",
+  "short_name": "SmoothBoost",
+  "version": "1.0.5",
+  "description": "Reduce decorative page motion, visual effects, scroll hijacking, and autoplaying background media, with an optional animation frame limit.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "SmoothBoost Performance Controller",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["scripts/page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["scripts/content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "background": {
+    "service_worker": "scripts/background.js"
+  },
+  "commands": {
+    "toggle-speed-boost": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Toggle SmoothBoost on current website"
+    }
+  }
+}
