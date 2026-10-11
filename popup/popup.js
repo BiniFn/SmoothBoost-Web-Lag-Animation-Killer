@@ -17,7 +17,9 @@ const DEFAULT_SETTINGS = {
   },
   siteOverrides: {}
 };
-const GITHUB_ISSUE_URL = 'https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues/new';
+const GITHUB_ISSUE_URL = 'https://github.com/BiniFn/SmoothBoost/issues/new';
+const UPDATE_CACHE_KEY = 'smoothBoostLatestReleaseCheck';
+const UPDATE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 let currentTab = null;
 let currentHostname = '';
@@ -54,6 +56,10 @@ const diagnosticsResults = document.getElementById('diagnostics-results');
 const diagnosticsSuggestions = document.getElementById('diagnostics-suggestions');
 const siteBrokenButton = document.getElementById('site-broken');
 const bugReportLink = document.getElementById('bug-report-link');
+const updateStatus = document.getElementById('update-status');
+const checkUpdatesButton = document.getElementById('check-updates');
+const downloadUpdateLink = document.getElementById('download-update');
+const releaseUpdateLink = document.getElementById('release-update-link');
 
 const PRESET_CONFIGS = {
   ultra: {
@@ -105,6 +111,99 @@ async function init() {
   requestPageStatus();
   bindEvents();
   bugReportLink.href = buildIssueUrl(false);
+  void checkForUpdates();
+}
+
+function renderUpdateResult(result, checkedAt, note = '') {
+  downloadUpdateLink.hidden = true;
+  releaseUpdateLink.hidden = true;
+
+  if (!result) {
+    updateStatus.textContent = note || 'Could not read the latest GitHub release. Try again.';
+    return;
+  }
+
+  const freshness = note || (checkedAt ? ` Checked ${new Date(checkedAt).toLocaleString()}.` : '');
+  if (result.status === 'update') {
+    updateStatus.textContent = `Update available: ${result.latestVersion}.${freshness}`;
+    downloadUpdateLink.href = result.downloadUrl;
+    downloadUpdateLink.textContent = `Download SmoothBoost ${result.latestVersion}`;
+    downloadUpdateLink.hidden = false;
+    return;
+  }
+  if (result.status === 'update-without-zip') {
+    updateStatus.textContent = `Version ${result.latestVersion} is available, but its ZIP is not attached yet.${freshness}`;
+    releaseUpdateLink.href = result.releaseUrl;
+    releaseUpdateLink.hidden = false;
+    return;
+  }
+  if (result.status === 'ahead') {
+    updateStatus.textContent = `This installed version is newer than the latest GitHub release (${result.latestVersion}).${freshness}`;
+    return;
+  }
+  updateStatus.textContent = `You're up to date (${result.currentVersion}).${freshness}`;
+}
+
+async function checkForUpdates(force = false) {
+  const currentVersion = chrome.runtime.getManifest().version;
+  let cached = null;
+  try {
+    const stored = await chrome.storage.local.get(UPDATE_CACHE_KEY);
+    cached = stored[UPDATE_CACHE_KEY];
+  } catch (_error) {
+    // Continue with a network check if extension storage is unavailable.
+  }
+
+  const isFresh = cached && Number.isFinite(cached.checkedAt)
+    && Date.now() - cached.checkedAt >= 0
+    && Date.now() - cached.checkedAt < UPDATE_CACHE_TTL_MS;
+  const cachedResult = isFresh ? SmoothBoostUpdates.fromCache(currentVersion, cached) : null;
+  if (!force && cachedResult) {
+    renderUpdateResult(cachedResult, cached.checkedAt);
+    return;
+  }
+
+  checkUpdatesButton.disabled = true;
+  checkUpdatesButton.textContent = 'Checking…';
+  updateStatus.textContent = 'Checking GitHub for a newer version…';
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(SmoothBoostUpdates.RELEASES_API_URL, {
+      headers: { Accept: 'application/vnd.github+json' },
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+    const release = await response.json();
+    const result = SmoothBoostUpdates.fromRelease(currentVersion, release);
+    if (!result) throw new Error('GitHub release metadata was not valid');
+
+    const checkedAt = Date.now();
+    try {
+      await chrome.storage.local.set({
+        [UPDATE_CACHE_KEY]: {
+          checkedAt,
+          latestVersion: result.latestVersion,
+          hasZip: result.hasZip
+        }
+      });
+    } catch (_error) {
+      // The result is still useful even when it cannot be cached.
+    }
+    renderUpdateResult(result, checkedAt);
+  } catch (_error) {
+    if (cachedResult) {
+      renderUpdateResult(cachedResult, cached.checkedAt, 'GitHub could not be reached; showing the last checked result.');
+    } else {
+      renderUpdateResult(null, null, 'Could not check GitHub. Check your connection and try again.');
+    }
+  } finally {
+    window.clearTimeout(timeoutId);
+    checkUpdatesButton.disabled = false;
+    checkUpdatesButton.textContent = 'Check now';
+  }
 }
 
 function getSiteState() {
@@ -403,6 +502,7 @@ function buildIssueUrl(siteBroken) {
 function bindEvents() {
   controlsTab.addEventListener('click', () => selectTab('controls'));
   helpTab.addEventListener('click', () => selectTab('help'));
+  checkUpdatesButton.addEventListener('click', () => { void checkForUpdates(true); });
   siteToggle.addEventListener('change', () => {
     updateSiteOverride({ enabled: siteToggle.checked });
     renderUI();

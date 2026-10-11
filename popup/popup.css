@@ -633,6 +633,47 @@ body.site-disabled .toggles-section {
   line-height: 1.4;
 }
 
+.update-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.update-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.update-heading h2 {
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.update-heading p,
+.update-note {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.update-heading p {
+  margin-top: 2px;
+}
+
+.update-note {
+  color: var(--text-dim);
+}
+
+.update-card .action-link[hidden] {
+  display: none;
+}
+
 /* Quick install and usage guide */
 .help-card {
   border: 1px solid var(--border);

@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const test = require('node:test');
 
 const popupSource = fs.readFileSync(path.join(__dirname, '../popup/popup.js'), 'utf8');
+const updateChecker = require('../popup/update-check.js');
 
 class FakeElement {
   constructor() {
@@ -41,7 +42,10 @@ async function renderPopup({ url, response, hasReceiver = true, storedConfig = n
   const elements = new Map();
   const documentListeners = new Map();
   const body = new FakeElement();
-  const runtime = { lastError: undefined };
+  const runtime = {
+    lastError: undefined,
+    getManifest() { return { version: '1.0.8' }; }
+  };
   let messageCount = 0;
 
   const document = {
@@ -87,7 +91,20 @@ async function renderPopup({ url, response, hasReceiver = true, storedConfig = n
     runtime
   };
 
-  vm.runInNewContext(popupSource, { document, chrome, window: { setTimeout }, URL });
+  vm.runInNewContext(popupSource, {
+    document,
+    chrome,
+    SmoothBoostUpdates: updateChecker,
+    window: { setTimeout, clearTimeout },
+    AbortController,
+    fetch: async () => ({
+      ok: true,
+      async json() {
+        return { tag_name: 'v1.0.8', draft: false, prerelease: false, assets: [{ name: 'SmoothBoost-1.0.8.zip' }] };
+      }
+    }),
+    URL
+  });
   await documentListeners.get('DOMContentLoaded')();
   await new Promise((resolve) => setImmediate(resolve));
   return { elements, messageCount };

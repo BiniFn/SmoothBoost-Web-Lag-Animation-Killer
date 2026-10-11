@@ -8,13 +8,15 @@ The original SmoothBoost / Web Lag & Animation Killer project is by [BiniFn](htt
 
 ## Install in Chrome or Helium
 
-1. Download and extract the [SmoothBoost 1.0.7 ZIP](https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0.7/SmoothBoost-1.0.7.zip).
+1. Download and extract the [latest SmoothBoost ZIP](https://github.com/BiniFn/SmoothBoost/releases/latest).
 2. Open `chrome://extensions` in Chrome or Helium and turn on **Developer mode**.
 3. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
 4. Pin SmoothBoost from the extensions menu if you want quick access.
 5. Reload tabs that were already open so the document-start scripts can take effect.
 
 The popup's **Help & Bugs** tab also has installation instructions. For local development, **Load unpacked** can point directly to this project folder.
+
+The popup checks GitHub for a newer stable release when it opens, then caches the result for up to six hours. If an update is available, choose **Download SmoothBoost** in **Help & Bugs**. Chrome and Helium cannot automatically replace a Developer mode unpacked extension from a ZIP; replace the files in the loaded folder, then click **Reload** on the extensions page. A Chrome Web Store installation can use the browser's built-in updater.
 
 ## Profiles and controls
 
@@ -37,7 +39,7 @@ From the project folder, run:
 python3 scripts/package_extension.py
 ```
 
-The generated `dist/SmoothBoost-1.0.7.zip` places `manifest.json` and the runtime files at the archive root. The test page and test suite are excluded. Chrome's **Load unpacked** expects an extracted directory; it does not load the ZIP directly.
+The generated `dist/SmoothBoost-1.0.8.zip` places `manifest.json` and the runtime files at the archive root. The test page and test suite are excluded. Chrome's **Load unpacked** expects an extracted directory; it does not load the ZIP directly.
 
 ## Benchmark
 

@@ -190,9 +190,21 @@
     <section class="tab-panel help-panel" id="help-panel" role="tabpanel" aria-labelledby="tab-help" hidden>
       <div class="section-label">HELP &amp; FEEDBACK</div>
       <p class="help-intro">Found a problem? Open a GitHub issue. Include your browser, site, selected profile, what happened, and steps to reproduce it.</p>
+      <section class="update-card" aria-labelledby="update-title" aria-live="polite">
+        <div class="update-heading">
+          <div>
+            <h2 id="update-title">Updates</h2>
+            <p id="update-status">Checking GitHub for a newer version…</p>
+          </div>
+          <button class="diagnose-button" id="check-updates" type="button">Check now</button>
+        </div>
+        <a class="action-link primary-action" id="download-update" href="#" target="_blank" rel="noopener noreferrer" hidden>Download update</a>
+        <a class="action-link secondary-action" id="release-update-link" href="#" target="_blank" rel="noopener noreferrer" hidden>View release</a>
+        <p class="update-note">Unpacked Developer mode installs cannot install themselves. After downloading, replace the files in the folder Chrome or Helium loaded, then click Reload on the extensions page.</p>
+      </section>
       <button class="action-link primary-action" id="site-broken" type="button">Site looks broken? Turn SmoothBoost off and report it</button>
-      <a class="action-link secondary-action" id="bug-report-link" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues/new" target="_blank" rel="noopener noreferrer">Submit a bug report on GitHub</a>
-      <a class="action-link secondary-action" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues" target="_blank" rel="noopener noreferrer">View GitHub issues</a>
+      <a class="action-link secondary-action" id="bug-report-link" href="https://github.com/BiniFn/SmoothBoost/issues/new" target="_blank" rel="noopener noreferrer">Submit a bug report on GitHub</a>
+      <a class="action-link secondary-action" href="https://github.com/BiniFn/SmoothBoost/issues" target="_blank" rel="noopener noreferrer">View GitHub issues</a>
 
       <div class="credit-card">
         <span class="credit-label">ORIGINAL PROJECT</span>
@@ -204,7 +216,7 @@
       <details class="help-card">
         <summary>Install and use instructions</summary>
         <ol class="help-steps">
-          <li><a href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0.7/SmoothBoost-1.0.7.zip" target="_blank" rel="noopener noreferrer">Download the SmoothBoost 1.0.7 ZIP</a> and extract it.</li>
+          <li><a href="https://github.com/BiniFn/SmoothBoost/releases/latest" target="_blank" rel="noopener noreferrer">Download the latest SmoothBoost ZIP</a> and extract it.</li>
           <li>Open <code>chrome://extensions</code> in Chrome or Helium and turn on <strong>Developer mode</strong>.</li>
           <li>Choose <strong>Load unpacked</strong> and select the extracted folder containing <code>manifest.json</code>.</li>
           <li>Reload open tabs after installing or updating so the page scripts can start.</li>
@@ -223,6 +235,7 @@
     </footer>
   </div>
 
+  <script src="update-check.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

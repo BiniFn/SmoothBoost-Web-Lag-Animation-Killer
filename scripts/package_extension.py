@@ -15,6 +15,7 @@ PACKAGE_FILES = (
     "popup/popup.html",
     "popup/popup.css",
     "popup/popup.js",
+    "popup/update-check.js",
     "scripts/background.js",
     "scripts/content.js",
     "scripts/page-hook.js",
