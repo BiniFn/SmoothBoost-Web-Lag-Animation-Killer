@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "genericCarouselSelectors": [
+    ".swiper",
+    "[data-swiper]"
+  ],
+  "siteRules": [
+    {
+      "id": "reanime-home-hero",
+      "hosts": ["reanime.to"],
+      "paths": ["/", "/home"],
+      "heroSelectors": [
+        "[aria-label=\"Hero carousel\"]",
+        "[aria-label*=\"hero carousel\" i]",
+        "[data-testid*=\"hero-carousel\" i]"
+      ],
+      "behavior": "pause-autoplay-preserve-manual-controls"
+    }
+  ]
+}

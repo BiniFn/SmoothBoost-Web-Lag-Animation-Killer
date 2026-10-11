@@ -100,6 +100,31 @@
       line-height: 1.6;
     }
 
+    .benchmark-box {
+      max-width: 900px;
+      margin: 0 auto 36px;
+      padding: 16px 20px;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.92);
+      text-align: left;
+    }
+
+    .benchmark-box h2 { font-size: 18px; margin-bottom: 6px; }
+    .benchmark-box p { color: #94a3b8; font-size: 13px; margin-bottom: 10px; }
+    .benchmark-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .benchmark-actions button {
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      border-radius: 7px;
+      padding: 8px 12px;
+      background: #0f2338;
+      color: #e0f2fe;
+      font: inherit;
+      cursor: pointer;
+    }
+    .benchmark-actions button:disabled { opacity: 0.5; cursor: wait; }
+    #benchmark-result { margin-top: 10px; color: #bae6fd; font-size: 12px; }
+
     /* Heavy GPU Backdrop Blur Glass Cards */
     .glass-grid {
       position: relative;
@@ -205,7 +230,7 @@
 
   <div class="hero">
     <h1>SmoothBoost Stress Test Page</h1>
-    <p class="subtitle">This page simulates bloated modern web animations that cause lag on M1 MacBooks.</p>
+    <p class="subtitle">A synthetic page for comparing rendering behavior before and after SmoothBoost.</p>
 
     <div class="status-box">
       <strong>Active Performance Hogs on this Page:</strong>
@@ -213,13 +238,23 @@
         <li>🌀 8+ Infinite CSS keyframe animations (spinners, floating cards, pulsing tags)</li>
         <li>🌫️ 8 Heavy GPU <code>backdrop-filter: blur(28px)</code> glassmorphic cards</li>
         <li>✨ Continuous canvas particle simulation with 400 physics nodes on <code>requestAnimationFrame</code></li>
-        <li>📜 Hijacked mouse wheel scroll listener with artificial inertia lag</li>
+        <li>📜 Non-passive wheel event listener; the page keeps native scrolling</li>
         <li>🎬 Autoplaying looping video element</li>
       </ul>
       <p style="margin-top: 12px; color: #38bdf8;">
-        👉 <strong>Test instructions:</strong> Enable the <strong>SmoothBoost</strong> extension or press <kbd>Alt+Shift+S</kbd>. Watch animations stop instantly, the GPU load plummet, and scrolling turn buttery smooth!
+        👉 <strong>Test instructions:</strong> Measure with SmoothBoost off, turn it on, then measure again. Visible effects and media remain available; only offscreen work is paused.
       </p>
     </div>
+
+    <section class="benchmark-box" aria-labelledby="benchmark-title">
+      <h2 id="benchmark-title">Before / after benchmark</h2>
+      <p>Measure animation frames in this same tab for three seconds. Run the first measurement with SmoothBoost off, then enable it and run the second. Device load affects results.</p>
+      <div class="benchmark-actions">
+        <button type="button" id="measure-before">Measure before</button>
+        <button type="button" id="measure-after">Measure after</button>
+      </div>
+      <div id="benchmark-result" aria-live="polite">No measurements yet.</div>
+    </section>
   </div>
 
   <!-- Heavy Glassmorphic Cards -->
@@ -306,13 +341,58 @@
     }
     requestAnimationFrame(updateFps);
 
-    // 2. SIMULATED SMOOTH SCROLL HIJACKER (Lenis/Locomotive style)
-    // Intercepts wheel events on window and body
+    // Simple same-tab before/after measurement. It reports observed frame
+    // delivery and does not make claims about a device's actual GPU usage.
+    const beforeButton = document.getElementById('measure-before');
+    const afterButton = document.getElementById('measure-after');
+    const benchmarkResult = document.getElementById('benchmark-result');
+    const benchmarkButtons = [beforeButton, afterButton];
+    let beforeMeasurement = null;
+    let benchmarkRunning = false;
+
+    function measureFrames(label) {
+      if (benchmarkRunning) return;
+      benchmarkRunning = true;
+      benchmarkButtons.forEach((button) => { button.disabled = true; });
+      benchmarkResult.textContent = `${label}: measuring for 3 seconds…`;
+      const startedAt = performance.now();
+      let frames = 0;
+      let previousFrame = startedAt;
+      let totalFrameGap = 0;
+      function sample(now) {
+        frames += 1;
+        totalFrameGap += now - previousFrame;
+        previousFrame = now;
+        if (now - startedAt < 3000) {
+          requestAnimationFrame(sample);
+          return;
+        }
+        const duration = now - startedAt;
+        const result = {
+          fps: Math.round(frames * 1000 / duration),
+          averageGap: Math.round(totalFrameGap / Math.max(1, frames)),
+          frames
+        };
+        if (label === 'Before') beforeMeasurement = result;
+        let comparison = '';
+        if (label === 'After' && beforeMeasurement) {
+          const change = Math.round((result.fps - beforeMeasurement.fps) / Math.max(1, beforeMeasurement.fps) * 100);
+          comparison = ` · ${Math.abs(change)}% ${change >= 0 ? 'more' : 'fewer'} frames than before`;
+        }
+        benchmarkResult.textContent = `${label}: ${result.fps} FPS, ${result.averageGap} ms average frame gap (${result.frames} frames)${comparison}.`;
+        benchmarkRunning = false;
+        benchmarkButtons.forEach((button) => { button.disabled = false; });
+      }
+      requestAnimationFrame(sample);
+    }
+
+    beforeButton.addEventListener('click', () => measureFrames('Before'));
+    afterButton.addEventListener('click', () => measureFrames('After'));
+
+    // 2. Exercise wheel-event dispatch without cancelling native scroll.
     window.addEventListener('wheel', function (e) {
-      // Artificial delay or resistance
       if (e.deltaY !== 0) {
-        // Many libraries do: e.preventDefault(); and trigger custom interpolation
-        // SmoothBoost's page-hook.js will neutralize this!
+        // Intentionally left empty: the benchmark must not alter scrolling.
       }
     }, { passive: false });
 

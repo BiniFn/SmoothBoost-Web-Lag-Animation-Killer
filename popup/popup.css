@@ -327,6 +327,95 @@ input:checked + .slider:before {
   color: var(--accent-light);
 }
 
+.diagnostics-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 11px 12px;
+}
+
+.diagnostics-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.diagnostics-heading h2 {
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.diagnostics-heading p {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.diagnose-button,
+.suggestion-button {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--accent-light);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.diagnose-button {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+}
+
+.diagnose-button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.diagnostics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.diagnostics-grid[hidden],
+.suggestions[hidden] {
+  display: none;
+}
+
+.diagnostics-grid div {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.diagnostics-grid strong {
+  color: var(--accent-light);
+  font-size: 12px;
+}
+
+.diagnostics-grid span {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.suggestion-button {
+  padding: 5px 7px;
+}
+
 /* Granular Toggles */
 .toggles-section {
   background: var(--bg-secondary);
@@ -486,6 +575,13 @@ body.site-disabled .toggles-section {
   font-weight: 650;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.action-link:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .primary-action {

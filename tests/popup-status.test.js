@@ -37,7 +37,7 @@ class FakeElement {
   }
 }
 
-async function renderPopup({ url, response, hasReceiver = true }) {
+async function renderPopup({ url, response, hasReceiver = true, storedConfig = null }) {
   const elements = new Map();
   const documentListeners = new Map();
   const body = new FakeElement();
@@ -75,7 +75,7 @@ async function renderPopup({ url, response, hasReceiver = true }) {
     storage: {
       local: {
         async get() {
-          return { smoothBoostConfig: { globalEnabled: true, mode: 'ultra', customSettings: {}, siteOverrides: {} } };
+          return { smoothBoostConfig: storedConfig || { globalEnabled: true, mode: 'ultra', customSettings: {}, siteOverrides: {} } };
         },
         async set() {}
       }
@@ -87,8 +87,9 @@ async function renderPopup({ url, response, hasReceiver = true }) {
     runtime
   };
 
-  vm.runInNewContext(popupSource, { document, chrome, window: { setTimeout } });
+  vm.runInNewContext(popupSource, { document, chrome, window: { setTimeout }, URL });
   await documentListeners.get('DOMContentLoaded')();
+  await new Promise((resolve) => setImmediate(resolve));
   return { elements, messageCount };
 }
 
@@ -113,6 +114,22 @@ test('popup reports a missing receiver as a reload request', async () => {
   assert.equal(messageCount, 1);
   assert.equal(elements.get('status-page').textContent, 'Reload tab to activate');
   assert.match(elements.get('status-detail').textContent, /Reload this tab/);
+});
+
+test('popup reports a disabled site without asking the user to reload', async () => {
+  const { elements } = await renderPopup({
+    url: 'https://example.com/',
+    hasReceiver: false,
+    storedConfig: {
+      globalEnabled: true,
+      mode: 'ultra',
+      customSettings: {},
+      siteOverrides: { 'example.com': { enabled: false } }
+    }
+  });
+
+  assert.equal(elements.get('status-page').textContent, 'Off for this site');
+  assert.match(elements.get('status-detail').textContent, /not injected here/);
 });
 
 test('popup reports browser-owned pages as unsupported without messaging them', async () => {

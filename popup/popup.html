@@ -136,14 +136,53 @@
 
       <div class="toggle-row">
         <div class="toggle-info">
-          <span class="toggle-name">Limit page animation to 30 FPS</span>
-          <span class="toggle-sub">Optional: lower CPU/GPU use; may feel choppy</span>
+          <span class="toggle-name">Adaptive frame limit</span>
+          <span class="toggle-sub">Optional: uses 30 FPS only while long frames continue; requires browser support</span>
         </div>
         <label class="switch-sm">
           <input type="checkbox" id="toggle-fps">
           <span class="slider-sm"></span>
         </label>
       </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Pause offscreen animations</span>
+          <span class="toggle-sub">Pauses CSS motion outside the viewport, then resumes it as you scroll</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-offscreen-animations">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <span class="toggle-name">Skip rendering large feeds</span>
+          <span class="toggle-sub">Custom only; may change scrollbar position on long pages</span>
+        </div>
+        <label class="switch-sm">
+          <input type="checkbox" id="toggle-content-visibility">
+          <span class="slider-sm"></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="diagnostics-card" aria-labelledby="diagnostics-title">
+      <div class="diagnostics-heading">
+        <div>
+          <h2 id="diagnostics-title">Why is this page slow?</h2>
+          <p id="diagnostics-summary">Check recent page activity and get a suggested setting.</p>
+        </div>
+        <button class="diagnose-button" id="diagnose-page" type="button">Check</button>
+      </div>
+      <div class="diagnostics-grid" id="diagnostics-results" hidden>
+        <div><strong id="count-autoplay">—</strong><span>autoplay videos</span></div>
+        <div><strong id="count-blur">—</strong><span>blur panels</span></div>
+        <div><strong id="count-animations">—</strong><span>looping animations</span></div>
+        <div><strong id="count-frames">—</strong><span>long frames / 30 sec</span></div>
+      </div>
+      <div class="suggestions" id="diagnostics-suggestions" hidden></div>
     </section>
 
     </section>
@@ -151,7 +190,8 @@
     <section class="tab-panel help-panel" id="help-panel" role="tabpanel" aria-labelledby="tab-help" hidden>
       <div class="section-label">HELP &amp; FEEDBACK</div>
       <p class="help-intro">Found a problem? Open a GitHub issue. Include your browser, site, selected profile, what happened, and steps to reproduce it.</p>
-      <a class="action-link primary-action" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues/new" target="_blank" rel="noopener noreferrer">Report a bug on GitHub</a>
+      <button class="action-link primary-action" id="site-broken" type="button">Site looks broken? Turn SmoothBoost off and report it</button>
+      <a class="action-link secondary-action" id="bug-report-link" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues/new" target="_blank" rel="noopener noreferrer">Submit a bug report on GitHub</a>
       <a class="action-link secondary-action" href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues" target="_blank" rel="noopener noreferrer">View GitHub issues</a>
 
       <div class="credit-card">
@@ -164,7 +204,7 @@
       <details class="help-card">
         <summary>Install and use instructions</summary>
         <ol class="help-steps">
-          <li><a href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0.6/SmoothBoost-1.0.6.zip" target="_blank" rel="noopener noreferrer">Download the SmoothBoost 1.0.6 ZIP</a> and extract it.</li>
+          <li><a href="https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0.7/SmoothBoost-1.0.7.zip" target="_blank" rel="noopener noreferrer">Download the SmoothBoost 1.0.7 ZIP</a> and extract it.</li>
           <li>Open <code>chrome://extensions</code> in Chrome or Helium and turn on <strong>Developer mode</strong>.</li>
           <li>Choose <strong>Load unpacked</strong> and select the extracted folder containing <code>manifest.json</code>.</li>
           <li>Reload open tabs after installing or updating so the page scripts can start.</li>

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "SmoothBoost: Web Lag & Animation Killer",
   "short_name": "SmoothBoost",
-  "version": "1.0.6",
-  "description": "Reduce background media and expensive backdrop blur without changing site scrolling or disabling page animations.",
+  "version": "1.0.7",
+  "description": "Reduce offscreen page work while preserving visible media, scrolling, and site controls.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -20,21 +20,16 @@
   },
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
-  "content_scripts": [
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "web_accessible_resources": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["scripts/page-hook.js"],
-      "run_at": "document_start",
-      "world": "MAIN",
-      "all_frames": false
-    },
-    {
-      "matches": ["<all_urls>"],
-      "js": ["scripts/content.js"],
-      "run_at": "document_start",
-      "all_frames": false
+      "resources": ["data/site-rules.json"],
+      "matches": ["<all_urls>"]
     }
   ],
   "background": {

@@ -1,9 +1,9 @@
-// SmoothBoost - Popup Controller Script
+// SmoothBoost - popup controller
 
 const DEFAULT_SETTINGS = {
-  settingsVersion: 2,
+  settingsVersion: 3,
   globalEnabled: true,
-  mode: "ultra",
+  mode: 'ultra',
   customSettings: {
     killAnimations: false,
     killTransitions: false,
@@ -11,42 +11,50 @@ const DEFAULT_SETTINGS = {
     killScrollHijack: false,
     pauseBackgroundMedia: false,
     throttleCanvasFps: false,
+    contentVisibility: false,
+    pauseOffscreenAnimations: false,
     fpsLimit: 30
   },
   siteOverrides: {}
 };
+const GITHUB_ISSUE_URL = 'https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/issues/new';
 
 let currentTab = null;
-let currentHostname = "";
+let currentHostname = '';
 let config = null;
+let lastDiagnostics = null;
 
-// DOM Elements
-const domainLabel = document.getElementById("domain-label");
-const siteToggle = document.getElementById("site-toggle");
-const btnUltra = document.getElementById("btn-ultra");
-const btnBalanced = document.getElementById("btn-balanced");
-const btnCustom = document.getElementById("btn-custom");
-const resetBtn = document.getElementById("reset-defaults");
-const controlsTab = document.getElementById("tab-controls");
-const helpTab = document.getElementById("tab-help");
-const controlsPanel = document.getElementById("controls-panel");
-const helpPanel = document.getElementById("help-panel");
+const domainLabel = document.getElementById('domain-label');
+const siteToggle = document.getElementById('site-toggle');
+const btnUltra = document.getElementById('btn-ultra');
+const btnBalanced = document.getElementById('btn-balanced');
+const btnCustom = document.getElementById('btn-custom');
+const resetBtn = document.getElementById('reset-defaults');
+const controlsTab = document.getElementById('tab-controls');
+const helpTab = document.getElementById('tab-help');
+const controlsPanel = document.getElementById('controls-panel');
+const helpPanel = document.getElementById('help-panel');
+const statusDot = document.getElementById('status-dot');
+const statusPage = document.getElementById('status-page');
+const statusDetail = document.getElementById('status-detail');
+const statusProfile = document.getElementById('status-profile');
+const statusSiteRule = document.getElementById('status-site-rule');
+const siteRuleRow = document.getElementById('site-rule-row');
+const toggleAnim = document.getElementById('toggle-animations');
+const toggleTrans = document.getElementById('toggle-transitions');
+const toggleBlur = document.getElementById('toggle-blur');
+const toggleScroll = document.getElementById('toggle-scroll');
+const toggleMedia = document.getElementById('toggle-media');
+const toggleFps = document.getElementById('toggle-fps');
+const toggleOffscreen = document.getElementById('toggle-offscreen-animations');
+const toggleContentVisibility = document.getElementById('toggle-content-visibility');
+const diagnosticsButton = document.getElementById('diagnose-page');
+const diagnosticsSummary = document.getElementById('diagnostics-summary');
+const diagnosticsResults = document.getElementById('diagnostics-results');
+const diagnosticsSuggestions = document.getElementById('diagnostics-suggestions');
+const siteBrokenButton = document.getElementById('site-broken');
+const bugReportLink = document.getElementById('bug-report-link');
 
-const statusDot = document.getElementById("status-dot");
-const statusPage = document.getElementById("status-page");
-const statusDetail = document.getElementById("status-detail");
-const statusProfile = document.getElementById("status-profile");
-const statusSiteRule = document.getElementById("status-site-rule");
-const siteRuleRow = document.getElementById("site-rule-row");
-
-const toggleAnim = document.getElementById("toggle-animations");
-const toggleTrans = document.getElementById("toggle-transitions");
-const toggleBlur = document.getElementById("toggle-blur");
-const toggleScroll = document.getElementById("toggle-scroll");
-const toggleMedia = document.getElementById("toggle-media");
-const toggleFps = document.getElementById("toggle-fps");
-
-// Presets mapping
 const PRESET_CONFIGS = {
   ultra: {
     killAnimations: false,
@@ -54,7 +62,9 @@ const PRESET_CONFIGS = {
     killBlurFilters: true,
     killScrollHijack: false,
     pauseBackgroundMedia: true,
-    throttleCanvasFps: false
+    throttleCanvasFps: false,
+    pauseOffscreenAnimations: true,
+    contentVisibility: false
   },
   balanced: {
     killAnimations: false,
@@ -62,181 +72,371 @@ const PRESET_CONFIGS = {
     killBlurFilters: false,
     killScrollHijack: false,
     pauseBackgroundMedia: false,
-    throttleCanvasFps: false
+    throttleCanvasFps: false,
+    pauseOffscreenAnimations: false,
+    contentVisibility: false
   }
 };
 
 async function init() {
-  // 1. Get active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  currentTab = tab;
-
-  if (tab && tab.url && /^https?:\/\//i.test(tab.url)) {
+  currentTab = tab || null;
+  if (tab?.url && /^https?:\/\//i.test(tab.url)) {
     try {
-      const url = new URL(tab.url);
-      currentHostname = url.hostname;
+      currentHostname = new URL(tab.url).hostname.toLowerCase();
       domainLabel.textContent = currentHostname;
-    } catch (e) {
-      domainLabel.textContent = "Current tab";
+    } catch (_error) {
+      domainLabel.textContent = 'Current tab';
     }
   } else {
-    domainLabel.textContent = "Browser page (inactive)";
+    domainLabel.textContent = 'Browser page (inactive)';
     siteToggle.disabled = true;
+    siteBrokenButton.disabled = true;
   }
 
-  // 2. Load stored config
-  const stored = await chrome.storage.local.get("smoothBoostConfig");
+  const stored = await chrome.storage.local.get('smoothBoostConfig');
   config = {
     ...DEFAULT_SETTINGS,
     ...(stored.smoothBoostConfig || {}),
-    customSettings: {
-      ...DEFAULT_SETTINGS.customSettings,
-      ...(stored.smoothBoostConfig?.customSettings || {})
-    },
+    customSettings: { ...DEFAULT_SETTINGS.customSettings, ...(stored.smoothBoostConfig?.customSettings || {}) },
     siteOverrides: stored.smoothBoostConfig?.siteOverrides || {}
   };
-
-  // 3. Render UI based on config
   renderUI();
-
-  // 4. Query applied state from the active tab's top frame
   requestPageStatus();
-
-  // 5. Attach event listeners
   bindEvents();
+  bugReportLink.href = buildIssueUrl(false);
 }
 
 function getSiteState() {
-  if (!currentHostname) return { enabled: config.globalEnabled, mode: config.mode };
-  const override = config.siteOverrides?.[currentHostname];
+  if (!currentHostname) return { enabled: config.globalEnabled, mode: config.mode || 'ultra' };
+  const override = config.siteOverrides?.[currentHostname] || {};
   return {
-    enabled: override?.enabled !== undefined ? override.enabled : config.globalEnabled,
-    mode: override?.mode || config.mode || "ultra"
+    enabled: override.enabled !== undefined ? override.enabled : config.globalEnabled,
+    mode: override.mode || config.mode || 'ultra'
   };
+}
+
+function getCustomSettings() {
+  const site = currentHostname ? config.siteOverrides?.[currentHostname] : null;
+  return {
+    ...DEFAULT_SETTINGS.customSettings,
+    ...(config.customSettings || {}),
+    ...(site?.customSettings || {})
+  };
+}
+
+function getEffectiveSettings() {
+  const { enabled, mode } = getSiteState();
+  if (!enabled) return { enabled: false, mode: 'off' };
+  if (mode === 'ultra') return { enabled: true, mode, ...PRESET_CONFIGS.ultra };
+  if (mode === 'balanced') return { enabled: true, mode, ...PRESET_CONFIGS.balanced };
+  return { enabled: true, mode: 'custom', ...getCustomSettings() };
 }
 
 function renderUI() {
   const { enabled, mode } = getSiteState();
-
-  // Site toggle & container disabled class
   siteToggle.checked = enabled;
-  if (!enabled) {
-    document.body.classList.add("site-disabled");
-  } else {
-    document.body.classList.remove("site-disabled");
-  }
+  document.body.classList.toggle('site-disabled', !enabled);
+  [btnUltra, btnBalanced, btnCustom].forEach((button) => button.classList.remove('active'));
+  ({ ultra: btnUltra, balanced: btnBalanced, custom: btnCustom }[mode] || btnCustom).classList.add('active');
 
-  // Preset buttons
-  [btnUltra, btnBalanced, btnCustom].forEach(b => b.classList.remove("active"));
-  if (mode === "ultra") btnUltra.classList.add("active");
-  else if (mode === "balanced") btnBalanced.classList.add("active");
-  else btnCustom.classList.add("active");
-
-  // Determine active switches values
-  let switchValues;
-  const isPreset = (mode === "ultra" || mode === "balanced");
-
-  if (isPreset) {
-    switchValues = PRESET_CONFIGS[mode];
-  } else {
-    switchValues = config.customSettings;
-  }
-
+  const switchValues = mode === 'custom' ? getCustomSettings() : PRESET_CONFIGS[mode] || PRESET_CONFIGS.ultra;
   toggleAnim.checked = !!switchValues.killAnimations;
   toggleTrans.checked = !!switchValues.killTransitions;
   toggleBlur.checked = !!switchValues.killBlurFilters;
   toggleScroll.checked = !!switchValues.killScrollHijack;
   toggleMedia.checked = !!switchValues.pauseBackgroundMedia;
   toggleFps.checked = !!switchValues.throttleCanvasFps;
+  toggleOffscreen.checked = !!switchValues.pauseOffscreenAnimations;
+  toggleContentVisibility.checked = !!switchValues.contentVisibility;
 
-  // If in a fixed preset, make switches read-only/disabled
-  const customOnly = (mode !== "custom");
-  [toggleAnim, toggleTrans, toggleBlur, toggleScroll, toggleMedia, toggleFps].forEach(sw => {
-    sw.disabled = customOnly;
+  const customOnly = mode !== 'custom';
+  [toggleAnim, toggleTrans, toggleBlur, toggleScroll, toggleMedia, toggleFps, toggleOffscreen, toggleContentVisibility]
+    .forEach((input) => { input.disabled = customOnly; });
+}
+
+function sendTabMessage(tabId, message) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (response, error = null) => {
+      if (settled) return;
+      settled = true;
+      resolve({ response, error });
+    };
+    try {
+      const result = chrome.tabs.sendMessage(tabId, message, { frameId: 0 }, (response) => {
+        const error = chrome.runtime.lastError;
+        finish(response, error || null);
+      });
+      if (result && typeof result.then === 'function') result.then((response) => finish(response)).catch((error) => finish(undefined, error));
+    } catch (error) {
+      finish(undefined, error);
+    }
   });
+}
+
+function sendRuntimeMessage(message) {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage(message, (response) => {
+        const error = chrome.runtime.lastError;
+        resolve({ response, error: error || null });
+      });
+    } catch (error) {
+      resolve({ response: undefined, error });
+    }
+  });
+}
+
+async function injectCurrentTabScripts() {
+  if (!currentTab?.id || !getSiteState().enabled) return false;
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId: currentTab.id, frameIds: [0] },
+      world: 'MAIN',
+      files: ['scripts/page-hook.js']
+    });
+    await chrome.scripting.executeScript({
+      target: { tabId: currentTab.id, frameIds: [0] },
+      files: ['scripts/content.js']
+    });
+    return true;
+  } catch (_error) {
+    return false;
+  }
 }
 
 async function saveAndBroadcast() {
   await chrome.storage.local.set({ smoothBoostConfig: config });
+  await sendRuntimeMessage({ type: 'SYNC_CONTENT_SCRIPTS' });
+  if (!currentTab?.id) return;
 
-  if (currentTab && currentTab.id) {
-    sendTabMessage(currentTab.id, { type: "CONFIG_UPDATED", config });
+  const { enabled } = getSiteState();
+  const result = await sendTabMessage(currentTab.id, { type: 'CONFIG_UPDATED', config });
+  if (enabled && result.error) await injectCurrentTabScripts();
 
-    // Update badge in background
-    if (currentTab.url) {
-      const isSiteEnabled = getSiteState().enabled;
-      chrome.action.setBadgeText({
-        tabId: currentTab.id,
-        text: isSiteEnabled ? (getSiteState().mode === "ultra" ? "MAX" : "ON") : "OFF"
-      });
-      chrome.action.setBadgeBackgroundColor({
-        tabId: currentTab.id,
-        color: isSiteEnabled ? "#10b981" : "#6b7280"
-      });
-    }
+  if (currentTab.url) {
+    const isEnabled = getSiteState().enabled;
+    const mode = getSiteState().mode;
+    chrome.action.setBadgeText({ tabId: currentTab.id, text: isEnabled ? (mode === 'ultra' ? 'MAX' : 'ON') : 'OFF' });
+    chrome.action.setBadgeBackgroundColor({ tabId: currentTab.id, color: isEnabled ? '#10b981' : '#6b7280' });
+  }
+  requestPageStatus();
+}
 
-    requestPageStatus();
+function updateSiteOverride(patch) {
+  if (currentHostname) {
+    config.siteOverrides ||= {};
+    config.siteOverrides[currentHostname] = { ...(config.siteOverrides[currentHostname] || {}), ...patch };
+  } else {
+    Object.assign(config, patch);
   }
 }
 
-function setMode(newMode) {
-  if (currentHostname) {
-    if (!config.siteOverrides) config.siteOverrides = {};
-    config.siteOverrides[currentHostname] = {
-      ...(config.siteOverrides[currentHostname] || {}),
-      mode: newMode
-    };
-  } else {
-    config.mode = newMode;
-  }
+function setMode(mode) {
+  updateSiteOverride({ mode });
   renderUI();
   saveAndBroadcast();
 }
 
-function bindEvents() {
-  controlsTab.addEventListener("click", () => selectTab("controls"));
-  helpTab.addEventListener("click", () => selectTab("help"));
+function setCustomSetting(key, value) {
+  const current = getCustomSettings();
+  current[key] = value;
+  updateSiteOverride({ mode: 'custom', customSettings: current });
+  renderUI();
+  saveAndBroadcast();
+}
 
-  // Master site toggle
-  siteToggle.addEventListener("change", () => {
-    const isChecked = siteToggle.checked;
-    if (currentHostname) {
-      if (!config.siteOverrides) config.siteOverrides = {};
-      config.siteOverrides[currentHostname] = {
-        ...(config.siteOverrides[currentHostname] || {}),
-        enabled: isChecked
-      };
-    } else {
-      config.globalEnabled = isChecked;
+function renderRuleStatus(status) {
+  if (status === 'paused') statusSiteRule.textContent = 'Paused';
+  else if (status === 'waiting' || status === 'armed') statusSiteRule.textContent = 'Waiting for autoplay';
+  else if (status === 'unconfirmed') statusSiteRule.textContent = 'Not confirmed';
+  else statusSiteRule.textContent = 'Off';
+}
+
+function renderReloadStatus() {
+  statusDot.className = 'status-dot is-warning';
+  statusPage.textContent = 'Reload tab to activate';
+  statusDetail.textContent = 'Reload this tab after installing or updating SmoothBoost.';
+  statusProfile.textContent = '—';
+  siteRuleRow.hidden = true;
+}
+
+function renderUnsupportedStatus() {
+  statusDot.className = 'status-dot is-muted';
+  statusPage.textContent = 'Unsupported page';
+  statusDetail.textContent = 'The browser does not allow extensions to run on this page.';
+  statusProfile.textContent = '—';
+  siteRuleRow.hidden = true;
+}
+
+function renderSiteOffStatus() {
+  statusDot.className = 'status-dot is-muted';
+  statusPage.textContent = 'Off for this site';
+  statusDetail.textContent = 'SmoothBoost is not injected here. Turn it on and reload this tab to apply it.';
+  statusProfile.textContent = 'Off';
+  siteRuleRow.hidden = true;
+}
+
+function requestPageStatus(attempt = 0) {
+  if (!currentTab?.id || !currentTab.url || !/^https?:\/\//i.test(currentTab.url)) {
+    renderUnsupportedStatus();
+    return;
+  }
+  sendTabMessage(currentTab.id, { type: 'GET_STATUS' }).then(({ response, error }) => {
+    if (!error && response?.status === 'initializing' && attempt < 8) {
+      window.setTimeout(() => requestPageStatus(attempt + 1), 125);
+      return;
     }
+    if (!error && response?.status === 'initializing') {
+      renderReloadStatus();
+      return;
+    }
+    if (error || !response?.status) {
+      if (!getSiteState().enabled) renderSiteOffStatus();
+      else renderReloadStatus();
+      return;
+    }
+
+    statusDot.className = response.enabled ? 'status-dot is-active' : 'status-dot is-muted';
+    statusPage.textContent = response.enabled ? 'Active' : 'Off for this site';
+    statusDetail.textContent = response.enabled
+      ? 'SmoothBoost is running in this tab.'
+      : 'SmoothBoost is loaded, but paused for this site.';
+    statusProfile.textContent = response.enabled
+      ? ({ ultra: 'Maximum', balanced: 'Balanced', custom: 'Custom' }[response.mode] || 'Custom')
+      : 'Off';
+    const onReanime = response.siteRule !== 'not-applicable';
+    siteRuleRow.hidden = !onReanime;
+    if (onReanime) renderRuleStatus(response.siteRule);
+  });
+}
+
+function renderDiagnostics(diagnostics) {
+  lastDiagnostics = diagnostics;
+  diagnosticsResults.hidden = false;
+  document.getElementById('count-autoplay').textContent = String(diagnostics.autoplayVideos);
+  document.getElementById('count-blur').textContent = String(diagnostics.blurElements);
+  document.getElementById('count-animations').textContent = String(diagnostics.animationLoops);
+  document.getElementById('count-frames').textContent = diagnostics.longFrameApi ? String(diagnostics.longFrames) : 'N/A';
+  diagnosticsSummary.textContent = diagnostics.longFrameApi
+    ? `Recent 30-second sample; ${diagnostics.sampledElements} elements checked for blur.`
+    : `Long-frame reporting is not available here; ${diagnostics.sampledElements} elements checked for blur.`;
+  renderSuggestions(diagnostics);
+}
+
+function renderSuggestions(diagnostics) {
+  const settings = getEffectiveSettings();
+  const suggestions = [];
+  if (diagnostics.autoplayVideos > 0 && !settings.pauseBackgroundMedia) {
+    suggestions.push(['pauseBackgroundMedia', 'Pause offscreen autoplay previews']);
+  }
+  if (diagnostics.blurElements > 0 && !settings.killBlurFilters) {
+    suggestions.push(['killBlurFilters', 'Reduce backdrop blur']);
+  }
+  if (diagnostics.animationLoops > 0 && !settings.pauseOffscreenAnimations) {
+    suggestions.push(['pauseOffscreenAnimations', 'Pause offscreen animations']);
+  }
+  if (diagnostics.longFrames > 0 && diagnostics.longFrameApi && !settings.throttleCanvasFps) {
+    suggestions.push(['throttleCanvasFps', 'Try adaptive frame limiting']);
+  }
+  diagnosticsSuggestions.replaceChildren();
+  if (!suggestions.length) {
+    diagnosticsSuggestions.hidden = true;
+    return;
+  }
+  diagnosticsSuggestions.hidden = false;
+  for (const [key, label] of suggestions) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'suggestion-button';
+    button.textContent = label;
+    button.addEventListener('click', () => setCustomSetting(key, true));
+    diagnosticsSuggestions.appendChild(button);
+  }
+}
+
+async function runDiagnostics() {
+  if (!currentTab?.id) return;
+  diagnosticsButton.disabled = true;
+  diagnosticsButton.textContent = 'Checking';
+  const { response, error } = await sendTabMessage(currentTab.id, { type: 'GET_DIAGNOSTICS' });
+  diagnosticsButton.disabled = false;
+  diagnosticsButton.textContent = 'Check';
+  if (!error && response?.diagnostics) {
+    renderDiagnostics(response.diagnostics);
+  } else {
+    diagnosticsSummary.textContent = getSiteState().enabled
+      ? 'Reload this tab to collect page activity.'
+      : 'Turn SmoothBoost on for this site to inspect page activity.';
+  }
+}
+
+function buildIssueUrl(siteBroken) {
+  const profile = getSiteState().mode || 'unknown';
+  const browser = typeof navigator !== 'undefined' ? (navigator.userAgent || 'Unknown browser') : 'Unknown browser';
+  const title = siteBroken ? `[Bug] Site looks broken on ${currentHostname || 'this page'}` : '[Bug] SmoothBoost issue';
+  const counts = lastDiagnostics
+    ? `\nDiagnostics: autoplay videos ${lastDiagnostics.autoplayVideos}, blur panels ${lastDiagnostics.blurElements}, looping animations ${lastDiagnostics.animationLoops}, long frames ${lastDiagnostics.longFrames}.`
+    : '';
+  const body = [
+    '## Page details',
+    `- Site: ${currentHostname || 'unknown'}`,
+    `- Profile: ${profile}`,
+    `- Browser: ${browser}`,
+    siteBroken ? '- SmoothBoost was turned off for this site from the popup.' : '',
+    counts,
+    '',
+    '## What happened?',
+    '',
+    '## Steps to reproduce',
+    '1. ',
+    '',
+    '## Expected result',
+    '',
+    '## Actual result',
+    ''
+  ].filter(Boolean).join('\n');
+  return `${GITHUB_ISSUE_URL}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+}
+
+function bindEvents() {
+  controlsTab.addEventListener('click', () => selectTab('controls'));
+  helpTab.addEventListener('click', () => selectTab('help'));
+  siteToggle.addEventListener('change', () => {
+    updateSiteOverride({ enabled: siteToggle.checked });
     renderUI();
     saveAndBroadcast();
   });
+  btnUltra.addEventListener('click', () => setMode('ultra'));
+  btnBalanced.addEventListener('click', () => setMode('balanced'));
+  btnCustom.addEventListener('click', () => setMode('custom'));
 
-  // Preset button clicks
-  btnUltra.addEventListener("click", () => setMode("ultra"));
-  btnBalanced.addEventListener("click", () => setMode("balanced"));
-  btnCustom.addEventListener("click", () => setMode("custom"));
+  [
+    [toggleAnim, 'killAnimations'],
+    [toggleTrans, 'killTransitions'],
+    [toggleBlur, 'killBlurFilters'],
+    [toggleScroll, 'killScrollHijack'],
+    [toggleMedia, 'pauseBackgroundMedia'],
+    [toggleFps, 'throttleCanvasFps'],
+    [toggleOffscreen, 'pauseOffscreenAnimations'],
+    [toggleContentVisibility, 'contentVisibility']
+  ].forEach(([input, key]) => input.addEventListener('change', () => setCustomSetting(key, input.checked)));
 
-  // Custom switches
-  const customSwitches = [
-    { el: toggleAnim, key: "killAnimations" },
-    { el: toggleTrans, key: "killTransitions" },
-    { el: toggleBlur, key: "killBlurFilters" },
-    { el: toggleScroll, key: "killScrollHijack" },
-    { el: toggleMedia, key: "pauseBackgroundMedia" },
-    { el: toggleFps, key: "throttleCanvasFps" }
-  ];
-
-  customSwitches.forEach(({ el, key }) => {
-    el.addEventListener("change", () => {
-      config.customSettings[key] = el.checked;
-      setMode("custom");
-    });
+  diagnosticsButton.addEventListener('click', runDiagnostics);
+  siteBrokenButton.addEventListener('click', async () => {
+    if (!currentHostname || !currentTab?.id) return;
+    updateSiteOverride({ enabled: false });
+    renderUI();
+    await saveAndBroadcast();
+    await chrome.tabs.create({ url: buildIssueUrl(true) });
+  });
+  bugReportLink.addEventListener('click', (event) => {
+    event.preventDefault();
+    chrome.tabs.create({ url: buildIssueUrl(false) });
   });
 
-  // Reset defaults
-  resetBtn.addEventListener("click", async () => {
+  resetBtn.addEventListener('click', async () => {
     config = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     renderUI();
     await saveAndBroadcast();
@@ -244,102 +444,15 @@ function bindEvents() {
 }
 
 function selectTab(tabName) {
-  const showControls = tabName === "controls";
-  controlsTab.classList.toggle("is-selected", showControls);
-  helpTab.classList.toggle("is-selected", !showControls);
-  controlsTab.setAttribute("aria-selected", String(showControls));
-  helpTab.setAttribute("aria-selected", String(!showControls));
+  const showControls = tabName === 'controls';
+  controlsTab.classList.toggle('is-selected', showControls);
+  helpTab.classList.toggle('is-selected', !showControls);
+  controlsTab.setAttribute('aria-selected', String(showControls));
+  helpTab.setAttribute('aria-selected', String(!showControls));
   controlsTab.tabIndex = showControls ? 0 : -1;
   helpTab.tabIndex = showControls ? -1 : 0;
   controlsPanel.hidden = !showControls;
   helpPanel.hidden = showControls;
 }
 
-function sendTabMessage(tabId, message, callback = () => {}) {
-  let settled = false;
-  const finish = (response, error = null) => {
-    if (settled) return;
-    settled = true;
-    callback(response, error);
-  };
-
-  try {
-    const result = chrome.tabs.sendMessage(tabId, message, { frameId: 0 }, (response) => {
-      const error = chrome.runtime.lastError;
-      finish(response, error || null);
-    });
-    if (result && typeof result.catch === "function") {
-      result.catch((error) => finish(undefined, error));
-    }
-  } catch (error) {
-    finish(undefined, error);
-  }
-}
-
-function requestPageStatus(attempt = 0) {
-  if (!currentTab || !currentTab.id) {
-    renderUnsupportedStatus();
-    return;
-  }
-
-  if (!currentTab.url || !/^https?:\/\//i.test(currentTab.url)) {
-    renderUnsupportedStatus();
-    return;
-  }
-
-  sendTabMessage(currentTab.id, { type: "GET_STATUS" }, (response, error) => {
-    if (!error && response?.status === "initializing" && attempt < 8) {
-      window.setTimeout(() => requestPageStatus(attempt + 1), 125);
-      return;
-    }
-    if (!error && response?.status === "initializing") {
-      renderReloadStatus();
-      return;
-    }
-    if (error || !response?.status) {
-      renderReloadStatus();
-      return;
-    }
-
-    statusDot.className = "status-dot is-active";
-    statusPage.textContent = "Active";
-    statusDetail.textContent = response.enabled
-      ? "SmoothBoost is running in this tab."
-      : "SmoothBoost is loaded, but paused for this site.";
-    statusProfile.textContent = response.enabled
-      ? ({ ultra: "Maximum", balanced: "Balanced", custom: "Custom" }[response.mode] || "Custom")
-      : "Off";
-
-    const onReanime = response.siteRule !== "not-applicable";
-    siteRuleRow.hidden = !onReanime;
-    if (onReanime) {
-      statusSiteRule.textContent = response.siteRule === "paused"
-        ? "Paused"
-        : response.siteRule === "waiting"
-          ? "Waiting for hero"
-          : response.siteRule === "armed"
-            ? "Waiting for autoplay"
-            : response.siteRule === "unconfirmed"
-              ? "Not confirmed"
-              : "Off";
-    }
-  });
-}
-
-function renderReloadStatus() {
-  statusDot.className = "status-dot is-warning";
-  statusPage.textContent = "Reload tab to activate";
-  statusDetail.textContent = "Reload this tab after installing or updating SmoothBoost.";
-  statusProfile.textContent = "—";
-  siteRuleRow.hidden = true;
-}
-
-function renderUnsupportedStatus() {
-  statusDot.className = "status-dot is-muted";
-  statusPage.textContent = "Unsupported page";
-  statusDetail.textContent = "The browser does not allow extensions to run on this page.";
-  statusProfile.textContent = "—";
-  siteRuleRow.hidden = true;
-}
-
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener('DOMContentLoaded', init);

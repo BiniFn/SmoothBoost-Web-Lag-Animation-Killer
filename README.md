@@ -1,48 +1,54 @@
 # SmoothBoost
 
-SmoothBoost is a Manifest V3 browser extension for Chrome and Helium. The default Maximum profile pauses muted, looping background previews and removes backdrop blur while preserving site animations, normal scrolling, shadows, filters, embedded players, and controls. Balanced leaves site behavior and visuals unchanged. Custom exposes optional controls for stronger changes, including a page-wide animation-frame limit.
+SmoothBoost is a Manifest V3 extension for Chrome and Helium. It reduces background page work while keeping visible media, controls, scrolling, and site navigation usable.
 
 ## Credit
 
-The original SmoothBoost / Web Lag & Animation Killer project is by [BiniFn](https://github.com/BiniFn). This repository carries the project forward with Chrome and Helium packaging, safer performance profiles, status reporting, and the Re:Anime carousel rule.
+The original SmoothBoost / Web Lag & Animation Killer project is by [BiniFn](https://github.com/BiniFn). This repository carries the project forward with Chrome and Helium packaging, safer site controls, diagnostics, and performance fixes.
 
 ## Install in Chrome or Helium
 
-### Install from the ZIP
+1. Download and extract the [SmoothBoost 1.0.7 ZIP](https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/download/v1.0.7/SmoothBoost-1.0.7.zip).
+2. Open `chrome://extensions` in Chrome or Helium and turn on **Developer mode**.
+3. Choose **Load unpacked** and select the extracted folder containing `manifest.json`.
+4. Pin SmoothBoost from the extensions menu if you want quick access.
+5. Reload tabs that were already open so the document-start scripts can take effect.
 
-1. Download `SmoothBoost-1.0.6.zip` from the [Version 1.0.6 release](https://github.com/BiniFn/SmoothBoost-Web-Lag-Animation-Killer/releases/tag/v1.0.6) and extract it.
-2. Open `chrome://extensions` in Chrome or Helium.
-3. Turn on **Developer mode** and choose **Load unpacked**.
-4. Select the extracted folder containing `manifest.json`.
-5. Pin SmoothBoost from the extensions menu if you want one-click access.
-6. Reload already-open tabs after loading or updating SmoothBoost so its document-start scripts can run.
+The popup's **Help & Bugs** tab also has installation instructions. For local development, **Load unpacked** can point directly to this project folder.
 
-For local development, **Load unpacked** can also point directly to this project folder.
+## Profiles and controls
 
-The same install and usage steps are available from the extension popup under **Install and use instructions**.
+- **Maximum** pauses muted looping autoplay previews only while they are outside the viewport, pauses supported offscreen carousels, pauses offscreen CSS animations, and reduces expensive backdrop blur while raising translucent panel opacity to preserve contrast. It leaves visible previews, player controls, normal scrolling, and page animation frames alone.
+- On `reanime.to` home, Maximum stops the hero's automatic rotation after its first change, restores the slide that was showing, and keeps the site's manual controls available.
+- **Balanced** leaves page visuals and media behavior unchanged.
+- **Custom** controls apply to the current site. Optional controls include an adaptive 30 FPS limit that engages only after long animation frames and releases after the page recovers. It requires browser support for the Long Animation Frames API. **Skip rendering large feeds** can change scrollbar position on long pages.
 
-The extension runs on eligible sites by default. Use its toolbar popup to turn it off for a site or choose Maximum, Balanced, or Custom settings. Maximum leaves JavaScript animation frames uncapped, pauses muted looping previews, and removes backdrop blur; it does not rewrite wheel handlers or force CSS animations to finish, which can break site scrolling, hide content, or produce blank views. Balanced leaves site behavior and visuals unchanged. The Custom profile includes optional controls that can affect a site's appearance or behavior; use them per site if needed. The optional frame limiter is page-wide and may feel choppy. Media handling is limited to muted, looping autoplay previews in the top-level page; embedded video players and their playback controls are left alone, and previews paused by SmoothBoost resume when it is turned off. On `reanime.to`'s home page, SmoothBoost detects and stops the hero's autoplay interval, restores the slide that was showing, and keeps the manual slide controls available. The popup reports whether that pause was confirmed. The shortcut is **Option/Alt + Shift + S**; browser shortcut settings can change or reassign it.
+SmoothBoost registers its scripts only on sites that are enabled. A site turned off in the popup is excluded after the current tab is reloaded. **Why is this page slow?** samples autoplay videos, blurred panels, looping animations, and recent long frames, then offers one-tap settings. Counts are observations, not a promise that SmoothBoost can fix a site's own problems.
 
-Use the **Help & Bugs** popup tab to open a GitHub issue, view existing issues, see the BiniFn credit, or read install instructions. When reporting a bug, include your browser, site, profile, expected and actual behavior, and steps to reproduce it. Upgrading from an earlier version resets the old Custom feature defaults once while preserving the selected profile and frame-limit choice; re-enable any optional Custom controls you want to use.
+In **Help & Bugs**, **Site looks broken?** turns SmoothBoost off for the current site and opens a prefilled GitHub issue. You can also submit an issue without changing the site setting, view existing issues, or read the original BiniFn credit.
 
-### Build a ZIP package
+Shortcut: **Option/Alt + Shift + S**. Browser shortcut settings can reassign it.
 
-Run this from the project folder to rebuild the ZIP:
+## Build the ZIP
+
+From the project folder, run:
 
 ```sh
 python3 scripts/package_extension.py
 ```
 
-The generated `dist/SmoothBoost-1.0.6.zip` contains the extension files at the archive root. For local Developer mode installation, use **Load unpacked** and select the extracted folder; Chrome does not load this ZIP directly from that button. Reload open tabs after installing or updating the extension so document-start scripts take effect.
+The generated `dist/SmoothBoost-1.0.7.zip` places `manifest.json` and the runtime files at the archive root. The test page and test suite are excluded. Chrome's **Load unpacked** expects an extracted directory; it does not load the ZIP directly.
 
-## Try the included stress page
+## Benchmark
 
-Open `test-page.html` in Chrome or Helium, then enable SmoothBoost. If the page is opened as a `file://` URL, enable **Allow access to file URLs** for SmoothBoost on the extensions page. The test page loads a public sample video from Google Cloud Storage.
+Open `test-page.html` in Chrome or Helium. If you use its local `file://` URL, allow SmoothBoost access to file URLs in the extension details. Use **Measure before** with SmoothBoost off, turn it on, then use **Measure after**. The page measures animation-frame delivery for a few seconds in the same tab; compare several runs because results vary with device load and power state. The page includes a sample video that requires internet access.
 
 ## Project files
 
-- `manifest.json` — extension metadata, permissions, scripts, and shortcut.
-- `popup/` — toolbar controls and styling.
-- `scripts/` — service worker, isolated content script, page-world performance hooks, and ZIP packager.
-- `icons/` — extension icons.
-- `test-page.html` — local performance stress page; excluded from the ZIP.
+- `manifest.json` — extension permissions, metadata, and shortcut.
+- `scripts/background.js` — settings, site badges, and enabled-site script registration.
+- `scripts/content.js` — isolated-world controls, offscreen observers, blur contrast, status, and diagnostics.
+- `scripts/page-hook.js` — narrowly scoped main-world carousel and adaptive frame hooks.
+- `data/site-rules.json` — generic carousel selectors and site-specific rules.
+- `popup/` — controls, diagnostics, install help, and issue reporting.
+- `test-page.html` and `tests/` — local benchmark page and automated checks; excluded from the ZIP.

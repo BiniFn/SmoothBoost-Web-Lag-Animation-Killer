@@ -1,9 +1,9 @@
 // SmoothBoost - Background Service Worker (Manifest V3)
 
 const DEFAULT_SETTINGS = {
-  settingsVersion: 2,
+  settingsVersion: 3,
   globalEnabled: true,
-  mode: "ultra", // "ultra" | "balanced" | "custom"
+  mode: "ultra",
   customSettings: {
     killAnimations: false,
     killTransitions: false,
@@ -11,67 +11,136 @@ const DEFAULT_SETTINGS = {
     killScrollHijack: false,
     pauseBackgroundMedia: false,
     throttleCanvasFps: false,
+    pauseOffscreenAnimations: false,
+    contentVisibility: false,
     fpsLimit: 30
   },
-  siteOverrides: {} // hostname -> { enabled: boolean, mode?: string }
+  siteOverrides: {}
 };
 
-// A top-level document may not have a content script (for example, while it is
-// still loading or on a browser-owned page). Handle both the callback error and
-// the Promise form used by newer Chromium builds so neither becomes unhandled.
-function sendTabMessage(tabId, message) {
-  let settled = false;
-  const finish = () => {
-    if (settled) return;
-    settled = true;
-  };
+const REGISTERED_SCRIPT_IDS = ["smoothboost-content", "smoothboost-page-hook"];
+let registrationQueue = Promise.resolve();
 
+function getEffectiveSiteSettings(config, hostname) {
+  const siteOverride = config.siteOverrides?.[hostname] || {};
+  const enabled = siteOverride.enabled !== undefined ? siteOverride.enabled : config.globalEnabled !== false;
+  const mode = siteOverride.mode || config.mode || "ultra";
+  const custom = {
+    ...DEFAULT_SETTINGS.customSettings,
+    ...(config.customSettings || {}),
+    ...(siteOverride.customSettings || {})
+  };
+  return { enabled, mode, custom };
+}
+
+function toMatchPattern(hostname) {
   try {
-    const result = chrome.tabs.sendMessage(tabId, message, { frameId: 0 }, () => {
-      // Reading lastError inside the callback consumes Chromium's callback API
-      // error, including the normal "Receiving end does not exist" case.
-      void chrome.runtime.lastError;
-      finish();
-    });
-    if (result && typeof result.catch === "function") {
-      result.catch(finish);
-    }
-  } catch (error) {
-    finish();
+    const normalized = new URL(`https://${hostname}`).hostname;
+    if (normalized !== hostname.toLowerCase() || hostname.includes("*")) return null;
+    return `*://${normalized}/*`;
+  } catch (_error) {
+    return null;
   }
 }
 
-// Initialize settings on installation
-chrome.runtime.onInstalled.addListener(async ({ reason } = {}) => {
-  const existing = await chrome.storage.local.get("smoothBoostConfig");
-  if (!existing || !existing.smoothBoostConfig) {
-    await chrome.storage.local.set({ smoothBoostConfig: DEFAULT_SETTINGS });
-    return;
+async function syncRegisteredScripts() {
+  if (!chrome.scripting?.registerContentScripts || !chrome.scripting?.unregisterContentScripts) return;
+
+  const { smoothBoostConfig } = await chrome.storage.local.get("smoothBoostConfig");
+  const config = { ...DEFAULT_SETTINGS, ...(smoothBoostConfig || {}) };
+
+  try {
+    const existing = await chrome.scripting.getRegisteredContentScripts({ ids: REGISTERED_SCRIPT_IDS });
+    const existingIds = existing.map((script) => script.id).filter((id) => REGISTERED_SCRIPT_IDS.includes(id));
+    if (existingIds.length) await chrome.scripting.unregisterContentScripts({ ids: existingIds });
+  } catch (_error) {
+    // Continue to registration; a fresh install has no existing scripts.
   }
 
-  const config = existing.smoothBoostConfig;
-  if (reason !== "update" || (config.settingsVersion || 0) >= DEFAULT_SETTINGS.settingsVersion) return;
+  const siteEntries = Object.entries(config.siteOverrides || {});
+  const excludedHosts = config.globalEnabled === false ? [] : siteEntries
+    .filter(([, override]) => override?.enabled === false)
+    .map(([hostname]) => toMatchPattern(hostname))
+    .filter(Boolean);
+  const matches = config.globalEnabled === false
+    ? siteEntries.filter(([, override]) => override?.enabled === true)
+      .map(([hostname]) => toMatchPattern(hostname)).filter(Boolean)
+    : ["<all_urls>"];
+  if (!matches.length) return;
 
-  await chrome.storage.local.set({
-    smoothBoostConfig: {
-      ...config,
-      settingsVersion: DEFAULT_SETTINGS.settingsVersion,
-      customSettings: {
-        ...DEFAULT_SETTINGS.customSettings,
-        ...(config.customSettings || {}),
-        // These were enabled by default before 1.0.6 and could break page UI,
-        // normal scrolling, or autoplaying content. Users can opt back in.
-        killAnimations: false,
-        killTransitions: false,
-        killBlurFilters: false,
-        killScrollHijack: false,
-        pauseBackgroundMedia: false
-      }
+  const common = {
+    matches,
+    ...(excludedHosts.length ? { excludeMatches: excludedHosts } : {}),
+    allFrames: false,
+    runAt: "document_start"
+  };
+
+  await chrome.scripting.registerContentScripts([
+    {
+      id: "smoothboost-content",
+      ...common,
+      js: ["scripts/content.js"],
+      world: "ISOLATED"
+    },
+    {
+      id: "smoothboost-page-hook",
+      ...common,
+      js: ["scripts/page-hook.js"],
+      world: "MAIN"
     }
-  });
+  ]);
+}
+
+function queueScriptSync() {
+  registrationQueue = registrationQueue.catch(() => {}).then(syncRegisteredScripts);
+  return registrationQueue;
+}
+
+// Initialize settings and ensure dynamic registrations follow the saved site
+// state after installs, upgrades, service-worker restarts, and settings edits.
+chrome.runtime.onInstalled.addListener(async ({ reason } = {}) => {
+  const existing = await chrome.storage.local.get("smoothBoostConfig");
+  const current = existing?.smoothBoostConfig;
+
+  if (!current) {
+    await chrome.storage.local.set({ smoothBoostConfig: DEFAULT_SETTINGS });
+  } else if (reason === "update" && (current.settingsVersion || 0) < DEFAULT_SETTINGS.settingsVersion) {
+    const previousVersion = current.settingsVersion || 0;
+    const upgradedCustom = {
+      ...DEFAULT_SETTINGS.customSettings,
+      ...(current.customSettings || {})
+    };
+    if (previousVersion < 2) {
+      upgradedCustom.killAnimations = false;
+      upgradedCustom.killTransitions = false;
+      upgradedCustom.killBlurFilters = false;
+      upgradedCustom.killScrollHijack = false;
+      upgradedCustom.pauseBackgroundMedia = false;
+    }
+    await chrome.storage.local.set({
+      smoothBoostConfig: {
+        ...current,
+        settingsVersion: DEFAULT_SETTINGS.settingsVersion,
+        customSettings: upgradedCustom,
+        siteOverrides: current.siteOverrides || {}
+      }
+    });
+  }
+
+  await queueScriptSync();
 });
 
-// Update badge for active tab
+chrome.runtime.onStartup?.addListener(() => {
+  queueScriptSync().catch(() => {});
+});
+
+chrome.storage.onChanged?.addListener((changes, areaName) => {
+  if (areaName === "local" && changes.smoothBoostConfig) {
+    queueScriptSync().catch(() => {});
+  }
+});
+
+// Update the toolbar badge for the active site.
 async function updateBadge(tabId, url) {
   if (!url || !url.startsWith("http")) {
     chrome.action.setBadgeText({ tabId, text: "" });
@@ -81,68 +150,68 @@ async function updateBadge(tabId, url) {
   try {
     const domain = new URL(url).hostname;
     const { smoothBoostConfig } = await chrome.storage.local.get("smoothBoostConfig");
-    const config = smoothBoostConfig || DEFAULT_SETTINGS;
-
-    const siteSetting = config.siteOverrides?.[domain];
-    const isSiteEnabled = siteSetting?.enabled !== undefined
-      ? siteSetting.enabled
-      : config.globalEnabled;
-
-    if (isSiteEnabled) {
-      const modeText = (siteSetting?.mode || config.mode) === "ultra" ? "MAX" : "ON";
-      chrome.action.setBadgeText({ tabId, text: modeText });
-      chrome.action.setBadgeBackgroundColor({ tabId, color: "#10b981" }); // Emerald Green
-    } else {
-      chrome.action.setBadgeText({ tabId, text: "OFF" });
-      chrome.action.setBadgeBackgroundColor({ tabId, color: "#6b7280" }); // Slate Gray
-    }
-  } catch (e) {
-    // Ignore invalid URLs (chrome://, about:, etc.)
+    const config = { ...DEFAULT_SETTINGS, ...(smoothBoostConfig || {}) };
+    const { enabled, mode } = getEffectiveSiteSettings(config, domain);
+    chrome.action.setBadgeText({ tabId, text: enabled ? (mode === "ultra" ? "MAX" : "ON") : "OFF" });
+    chrome.action.setBadgeBackgroundColor({ tabId, color: enabled ? "#10b981" : "#6b7280" });
+  } catch (_error) {
+    // Ignore invalid or browser-owned URLs.
   }
 }
 
-// Listen for tab activation / update
-chrome.tabs.onActivated.addListener(async (activeInfo) => {
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
-    if (tab && tab.url) {
-      updateBadge(activeInfo.tabId, tab.url);
-    }
-  } catch (e) {}
+    const tab = await chrome.tabs.get(tabId);
+    if (tab?.url) await updateBadge(tabId, tab.url);
+  } catch (_error) {}
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab.url) {
-    updateBadge(tabId, tab.url);
-  }
+  if (changeInfo.status === "complete" && tab.url) updateBadge(tabId, tab.url);
 });
 
-// Handle keyboard shortcut (Alt+Shift+S / Option+Shift+S)
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command === "toggle-speed-boost") {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url || !tab.url.startsWith("http")) return;
-
-    const domain = new URL(tab.url).hostname;
-    const { smoothBoostConfig } = await chrome.storage.local.get("smoothBoostConfig");
-    const config = smoothBoostConfig || DEFAULT_SETTINGS;
-
-    const currentSiteState = config.siteOverrides?.[domain]?.enabled !== undefined
-      ? config.siteOverrides[domain].enabled
-      : config.globalEnabled;
-
-    const newState = !currentSiteState;
-
-    if (!config.siteOverrides) config.siteOverrides = {};
-    config.siteOverrides[domain] = {
-      ...(config.siteOverrides[domain] || {}),
-      enabled: newState
-    };
-
-    await chrome.storage.local.set({ smoothBoostConfig: config });
-    updateBadge(tab.id, tab.url);
-
-    // Notify tab content script
-    sendTabMessage(tab.id, { type: "CONFIG_UPDATED", config });
+// Consume both the callback error and newer Promise rejection forms. A missing
+// content-script receiver is expected on unsupported pages and disabled sites.
+function sendTabMessage(tabId, message) {
+  let settled = false;
+  const finish = () => { settled = true; };
+  try {
+    const result = chrome.tabs.sendMessage(tabId, message, { frameId: 0 }, () => {
+      void chrome.runtime.lastError;
+      finish();
+    });
+    if (result && typeof result.catch === "function") result.catch(finish);
+  } catch (_error) {
+    finish();
   }
+  return settled;
+}
+
+chrome.runtime.onMessage?.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "SYNC_CONTENT_SCRIPTS") {
+    queueScriptSync().then(() => sendResponse({ success: true })).catch(() => sendResponse({ success: false }));
+    return true;
+  }
+  return false;
+});
+
+// Handle keyboard shortcut (Alt+Shift+S / Option+Shift+S).
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== "toggle-speed-boost") return;
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.url || !/^https?:\/\//i.test(tab.url)) return;
+
+  const domain = new URL(tab.url).hostname;
+  const { smoothBoostConfig } = await chrome.storage.local.get("smoothBoostConfig");
+  const config = { ...DEFAULT_SETTINGS, ...(smoothBoostConfig || {}) };
+  const current = getEffectiveSiteSettings(config, domain).enabled;
+  config.siteOverrides = {
+    ...(config.siteOverrides || {}),
+    [domain]: { ...(config.siteOverrides?.[domain] || {}), enabled: !current }
+  };
+
+  await chrome.storage.local.set({ smoothBoostConfig: config });
+  await queueScriptSync();
+  await updateBadge(tab.id, tab.url);
+  sendTabMessage(tab.id, { type: "CONFIG_UPDATED", config });
 });
